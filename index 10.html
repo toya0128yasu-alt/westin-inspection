@@ -1,0 +1,868 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ウェスティン 客室インスペクション</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ウェスティン点検">
+<meta name="theme-color" content="#2B4A45">
+<style>
+:root{--navy:#2B4A45;--bg:#F4F6F9;--card:#fff;--line:#D9DEE5;--sub:#6B7280;--red:#C0392B}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:#1F2937;font-family:-apple-system,"Hiragino Sans","Meiryo UI","Noto Sans JP",sans-serif;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+header{position:sticky;top:0;z-index:10;background:var(--navy);color:#fff;padding:calc(env(safe-area-inset-top) + 8px) 12px 0}
+.hrow{display:flex;align-items:center;gap:8px;padding-bottom:6px}
+.hrow h1{font-size:16px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:8px;padding:8px 12px;font-size:15px}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin:0 -12px;padding:0 12px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;border:0;background:transparent;color:#C9D6E6;padding:10px 12px;font-size:14px;border-bottom:3px solid transparent;white-space:nowrap}
+.tab.on{color:#fff;border-bottom-color:#FFD15C;font-weight:700}
+.tab small{opacity:.8;margin-left:3px}
+main{max-width:760px;margin:0 auto;padding:12px 12px 110px}
+.sec{font-size:13px;font-weight:700;color:var(--navy);margin:16px 4px 6px;display:flex;align-items:center;gap:6px}
+.sec:before{content:"";width:4px;height:14px;background:var(--navy);border-radius:2px}
+.item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px;display:flex;gap:10px}
+.num{flex:none;width:34px;height:34px;border-radius:50%;background:var(--navy);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:15px}
+.body{flex:1;min-width:0}
+.txt{font-size:15px;font-weight:600;line-height:1.45;word-break:break-word}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;font-size:12px}
+.chip{background:#E8EEF6;color:var(--navy);border-radius:99px;padding:2px 8px}
+.chip.set{background:#FFF3D1;color:#8A5A00;font-weight:700}
+.note{font-size:13px;color:var(--sub);margin-top:4px;white-space:pre-wrap}
+.thumbs{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.thumbs img{width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.ops{flex:none;display:flex;flex-direction:column;gap:4px}
+.ops button{border:1px solid var(--line);background:#fff;border-radius:8px;width:38px;height:32px;font-size:14px}
+.ops button:disabled{opacity:.3}
+.empty{text-align:center;color:var(--sub);padding:60px 20px;line-height:1.8}
+.fab{position:fixed;right:18px;bottom:calc(env(safe-area-inset-bottom) + 18px);background:var(--navy);color:#fff;border:0;border-radius:99px;padding:14px 22px;font-size:16px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:5}
+/* modal */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:none;align-items:flex-end;justify-content:center}
+.ov.show{display:flex}
+.sheet{background:#fff;width:100%;max-width:640px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px 16px calc(env(safe-area-inset-bottom) + 16px)}
+@media(min-width:700px){.ov{align-items:center}.sheet{border-radius:16px}}
+.sheet h2{font-size:17px;margin:0 0 12px}
+label.l{display:block;font-size:12px;font-weight:700;color:var(--sub);margin:12px 0 4px}
+.in{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:16px;background:#fff}
+textarea.in{min-height:70px;resize:vertical}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:8px 14px;font-size:14px}
+.chips button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper button{width:44px;height:44px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:20px}
+.stepper .in{width:80px;text-align:center}
+.stepper .unit{width:90px}
+.ph{display:flex;flex-wrap:wrap;gap:8px}
+.ph .p{position:relative}
+.ph img{width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.ph .busy{width:90px;height:90px;border-radius:8px;border:1px dashed #9AA8B8;background:#EEF2F7;color:#5B6B7F;font-size:12px;display:flex;align-items:center;justify-content:center;animation:pl 1s ease-in-out infinite alternate}
+@keyframes pl{from{opacity:.5}to{opacity:1}}
+.btn:disabled{opacity:.6}
+.ph .x{position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;border:0;background:var(--red);color:#fff;font-size:13px;line-height:24px;padding:0}
+.phbtns{display:flex;gap:8px;margin-top:8px}
+.btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px 14px;font-size:15px}
+.btn.pri{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:700}
+.btn.dan{color:var(--red);border-color:#F1C4BF}
+.foot{display:flex;gap:8px;margin-top:18px}
+.foot .grow{flex:1}
+.menu button{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:#fff;padding:14px 4px;font-size:15px}
+.menu .cap{font-size:12px;color:var(--sub);margin:14px 4px 2px;font-weight:700}
+.trow{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.trow .in{flex:1}
+.trow button{flex:none;border:1px solid var(--line);background:#fff;border-radius:8px;width:38px;height:42px}
+.roombar{display:flex;align-items:center;gap:8px;margin:0 0 6px}
+.roombtn{flex:1;text-align:left;background:#fff;color:var(--navy);border:0;border-radius:10px;padding:9px 12px;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.roombtn small{font-weight:400;color:#556}
+.roomclr{background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:8px;padding:9px 11px}
+.rinfo{background:#fff;border:2px solid var(--navy);border-radius:12px;padding:10px 12px;margin-bottom:6px}
+.rinfo .rn{font-size:22px;font-weight:800;color:var(--navy)}
+.rinfo .rd{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;font-size:12px}
+.chip.lux{background:#F3E7C6;color:#7A5A00}.chip.std{background:#E3ECEA;color:#2B4A45}.chip.pull{background:#E8E4F5;color:#4A3B8C}
+.floors{display:flex;flex-wrap:wrap;gap:6px}
+.floors button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:9px 0;width:calc(20% - 5px);font-size:15px;font-weight:700}
+.floors button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.rooms{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:4px}
+@media(min-width:520px){.rooms{grid-template-columns:repeat(7,1fr)}}
+.rooms button{border:1px solid var(--line);border-left-width:5px;background:#fff;border-radius:8px;padding:7px 2px;font-size:15px;font-weight:700;line-height:1.2}
+.rooms button small{display:block;font-size:11px;font-weight:400;color:#556}
+.rooms button.on{outline:3px solid #E8C872}
+.legend{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:#556;margin-top:8px}
+.legend span:before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--c);margin-right:3px;vertical-align:-1px}
+.mapgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.mapgrid label{display:flex;align-items:center;gap:4px;font-size:13px;font-weight:700}
+.mapgrid select{flex:1;min-width:0;border:1px solid var(--line);border-radius:6px;padding:6px 2px;font-size:13px;background:#fff}
+.hint{font-size:12px;color:var(--sub);line-height:1.6}
+.chip.g3{background:#F1DDE6;color:#7A2E4F}.chip.g0{background:#E3ECEA;color:#2B4A45}.chip.g1{background:#DDE7F5;color:#1F4E78}.chip.g2{background:#F3E7C6;color:#7A5A00}.chip.tg{background:#EEE;color:#444}
+.floors button small{display:block;font-size:10px;font-weight:400;opacity:.8}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:8px}
+.seg button{border:0;background:#fff;padding:8px 12px;font-size:13px}.seg button.on{background:var(--navy);color:#fff}
+.bygrid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.bygrid label{display:flex;align-items:center;gap:6px;font-size:13px}
+.bygrid input{width:70px;border:1px solid var(--line);border-radius:6px;padding:8px;font-size:16px;text-align:center}
+.fgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.fgrid label{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700}
+.fgrid select{flex:1;border:1px solid var(--line);border-radius:6px;padding:7px 4px;font-size:14px;background:#fff}
+#viewer{position:fixed;inset:0;background:#000;z-index:80;display:none;align-items:center;justify-content:center}
+#viewer.show{display:flex}
+#viewer img{max-width:100%;max-height:100%}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 16px;border-radius:8px;font-size:14px;opacity:0;transition:.3s;z-index:90;pointer-events:none}
+#toast.show{opacity:1}
+#print{display:none}
+@media print{
+  header,main,.fab,.ov,#toast,#viewer{display:none!important}
+  #print{display:block}
+  body{background:#fff}
+}
+.pt h2{font-size:18px;border-bottom:3px solid #2B4A45;padding-bottom:4px;margin:0 0 10px;color:#2B4A45}
+.pt .typ{page-break-after:always}
+.pt .typ:last-child{page-break-after:auto}
+.pi{display:flex;gap:10px;border:1px solid #bbb;border-radius:6px;padding:8px;margin-bottom:8px;page-break-inside:avoid;break-inside:avoid}
+.pi .n{flex:none;width:30px;height:30px;border-radius:50%;background:#2B4A45;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pi .t{font-weight:700;font-size:14px}
+.pi .m{font-size:12px;margin-top:2px}
+.pi .nt{font-size:12px;color:#555;white-space:pre-wrap;margin-top:2px}
+.pi .im{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.pi .im img{width:170px;height:128px;object-fit:cover;border:1px solid #ccc;border-radius:4px}
+.pa{font-size:13px;font-weight:700;color:#2B4A45;margin:10px 0 4px}
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <h1 id="title">ウェスティン 客室インスペクション</h1>
+    <button class="iconbtn" id="menuBtn" aria-label="メニュー">☰ メニュー</button>
+  </div>
+  <div class="roombar"><button class="roombtn" id="roomBtn">🚪 部屋番号から選ぶ</button><button class="roomclr" id="roomClr" style="display:none" aria-label="部屋の選択を解除">✕</button></div>
+  <nav class="tabs" id="tabs"></nav>
+</header>
+<div id="warn" style="display:none;background:#FDECEA;color:#8B1E14;padding:10px 14px;font-size:13px;line-height:1.6;border-bottom:1px solid #F1C4BF">⚠ この画面（アプリ内のプレビュー）では<b>データを保存できません</b>。閉じると消えます。SafariやChromeで開いてください。</div>
+<main id="list"></main>
+<button class="fab" id="addBtn">＋ 項目を追加</button>
+
+<!-- 編集シート -->
+<div class="ov" id="editOv"><div class="sheet">
+  <h2 id="editTitle">項目を追加</h2>
+  <p class="hint" id="editGrade"></p>
+  <label class="l">順番</label>
+  <input class="in" id="fOrder" type="number" inputmode="numeric" min="1" style="width:100px">
+  <label class="l">エリア</label>
+  <div class="chips" id="fArea"></div>
+  <label class="l">対象の部屋タイプ（何も選ばなければ全タイプ）</label>
+  <div class="chips" id="fTypes"></div>
+  <label class="l">確認項目（場所・内容）</label>
+  <textarea class="in" id="fText" placeholder="例：ハンガー（向きを揃えて掛ける）"></textarea>
+  <label class="l">セット数</label>
+  <div class="seg" id="fSetMode"><button type="button" data-m="one">全タイプ共通</button><button type="button" data-m="by">タイプ別に入れる</button></div>
+  <div class="stepper" id="setOne">
+    <button type="button" id="setMinus">−</button>
+    <input class="in" id="fSets" type="number" inputmode="numeric" min="0" placeholder="−">
+    <button type="button" id="setPlus">＋</button>
+  </div>
+  <div class="bygrid" id="setBy" style="display:none"></div>
+  <input class="in unit" id="fUnit" placeholder="単位（本・枚・セット）" style="width:180px;margin-top:6px">
+  <label class="l">写真</label>
+  <div class="ph" id="fPhotos"></div>
+  <div class="phbtns">
+    <button type="button" class="btn" id="camBtn">📷 撮影</button>
+    <button type="button" class="btn" id="libBtn">🖼 写真を選ぶ</button>
+  </div>
+  <input type="file" id="camIn" accept="image/*" capture="environment" hidden>
+  <input type="file" id="libIn" accept="image/*" multiple hidden>
+  <label class="l">備考・ポイント</label>
+  <textarea class="in" id="fNote" placeholder="例：タグが見えないように"></textarea>
+  <div class="foot">
+    <button class="btn dan" id="delBtn">削除</button>
+    <span class="grow"></span>
+    <button class="btn" id="cancelBtn">キャンセル</button>
+    <button class="btn pri" id="saveBtn">保存</button>
+  </div>
+</div></div>
+
+<!-- メニュー -->
+<div class="ov" id="menuOv"><div class="sheet menu">
+  <h2>メニュー</h2>
+  <div class="cap">チェッカーに配る（ログイン・ネット不要）</div>
+  <button data-act="viewAll">📄 閲覧用ファイルを書き出す（全グレード・部屋番号の一覧付き）</button>
+  <button data-act="viewCur">📄 閲覧用ファイルを書き出す（このグレードだけ）</button>
+  <button data-act="printAll">🖨 印刷・PDF保存（全グレード）</button>
+  <button data-act="printCur">🖨 印刷・PDF保存（このグレードだけ）</button>
+  <div class="cap">編集</div>
+  <button data-act="settings">⚙ グレード・部屋タイプ・部屋番号・エリアの設定</button>
+  <button data-act="copy">📋 他のグレードから項目をコピー</button>
+  <button data-act="tpl">🏨 見本の項目を追加（このグレードの末尾に）</button>
+  <button data-act="tplAll">🏨 見本を全グレードに入れる（項目が空のグレードだけ）</button>
+  <button data-act="clear" style="color:#C0392B">🗑 このグレードの項目をすべて削除</button>
+  <div class="cap">データ（この端末の中だけに保存されています）</div>
+  <button data-act="backup">💾 バックアップを書き出す</button>
+  <button data-act="restore">📂 バックアップから読み込む</button>
+  <button data-act="help">❓ 使い方</button>
+  <p class="hint" id="usage"></p>
+  <div class="foot"><span class="grow"></span><button class="btn" data-act="close">閉じる</button></div>
+  <input type="file" id="restoreIn" accept=".json,application/json" hidden>
+</div></div>
+
+<!-- 部屋選択 -->
+<div class="ov" id="roomOv"><div class="sheet">
+  <h2>部屋を選ぶ</h2>
+  <label class="l">フロア</label>
+  <div class="floors" id="floorBtns"></div>
+  <label class="l" id="roomLbl">部屋番号</label>
+  <div class="rooms" id="roomBtns"></div>
+  <div class="legend" id="legend"></div>
+  <div id="gEditBar" style="display:none;margin-top:10px;background:#FFF6DB;border-radius:8px;padding:8px 10px" class="hint">✏ <b>グレード変更モード</b>：部屋を押すたびに グレードが切り替わります（フロアの標準と違う部屋には ★ が付きます）。</div>
+  <div class="foot"><button class="btn" id="gEditBtn">✏ 部屋ごとのグレードを変える</button><span class="grow"></span><button class="btn" id="roomCancel">閉じる</button></div>
+</div></div>
+
+<!-- 設定 -->
+<div class="ov" id="setOv"><div class="sheet">
+  <h2>設定</h2>
+  <label class="l">グレード（タブの順番）</label>
+  <div id="gradeRows"></div>
+  <button class="btn" id="addGrade">＋ グレードを追加</button>
+  <label class="l">フロアごとの標準グレード</label>
+  <p class="hint">ここは各フロアの「標準」です。同じ階でも違うグレードの部屋は、部屋選択画面の「✏ 部屋ごとのグレードを変える」で1室ずつ変えられます。</p>
+  <div class="fgrid" id="floorRows"></div>
+  <p class="hint" id="ovInfo"></p>
+  <label class="l">部屋タイプ（右の数字＝リビングの収納ベッドの台数）</label>
+  <p class="hint">収納ベッドの台数はあとから変えられます。0→2台のように増やすと、そのタイプの部屋に「プルダウンベッド」の確認項目を追加するか聞きます。0にすると、その項目から外すか聞きます。</p>
+  <div id="typeRows"></div>
+  <button class="btn" id="addType">＋ 部屋タイプを追加</button>
+  <label class="l">部屋番号ごとのタイプ</label>
+  <div class="seg" id="mapSeg"></div>
+  <div class="mapgrid" id="mapRows"></div>
+  <label class="l">エリア（チェックの大枠・回る順番）</label>
+  <div class="seg" id="areaSeg"></div>
+  <div id="areaRows"></div>
+  <button class="btn" id="addArea">＋ エリアを追加</button>
+  <div class="foot"><span class="grow"></span><button class="btn" id="setCancel">キャンセル</button><button class="btn pri" id="setSave">保存</button></div>
+</div></div>
+
+<!-- コピー -->
+<div class="ov" id="copyOv"><div class="sheet">
+  <h2>他のグレードから項目をコピー</h2>
+  <p class="hint">選んだグレードの全項目（写真も含む）を、今開いているグレードの末尾に追加します。スタンダードを作ってからエグゼクティブにコピーし、違うところだけ直す使い方がおすすめです。</p>
+  <label class="l">コピー元</label>
+  <select class="in" id="copyFrom"></select>
+  <div class="foot"><span class="grow"></span><button class="btn" id="copyCancel">キャンセル</button><button class="btn pri" id="copyDo">コピーする</button></div>
+</div></div>
+
+<!-- 使い方 -->
+<div class="ov" id="helpOv"><div class="sheet">
+  <h2>使い方</h2>
+  <div class="hint" style="font-size:14px;color:#333">
+  <p><b>1. グレードごとに項目を作る</b><br>上のタブ（スタンダード／エグゼクティブ／ラグジュアリー）で項目を入力すると、そのグレードの全部屋に反映されます。回る順番どおりに追加していきましょう。</p>
+  <p><b>2. 部屋タイプで違う項目</b><br>収納ベッドのように一部の部屋だけの項目は「対象の部屋タイプ」で選びます。タオルなど人数で数が変わるものは、セット数を「タイプ別に入れる」にします。</p>
+  <p><b>3. 部屋から開く</b><br>「🚪部屋番号から選ぶ」→ フロア → 部屋番号。その部屋のグレードとタイプに合う項目とセット数だけが表示されます。</p>
+  <p><b>4. グレードの割り当てを直す</b><br>階ごとの標準はメニューの「設定」で、1部屋ずつの例外は部屋選択画面の「✏部屋ごとのグレードを変える」で変更できます。</p>
+  <p><b>5. チェッカーに配る</b><br>「閲覧用ファイル」は写真入りの1ファイル。LINEやメールで送れば、ログインもネットもなしで開けます。紙なら「印刷・PDF保存」。</p>
+  <p><b>6. データの保存場所</b><br>データはこの端末の中だけに保存されます。別の端末へは「バックアップを書き出す」→「バックアップから読み込む」。</p>
+  </div>
+  <div class="foot"><span class="grow"></span><button class="btn pri" id="helpClose">閉じる</button></div>
+</div></div>
+
+<div id="viewer"><img id="viewerImg" alt=""></div>
+<div id="toast"></div>
+<div id="print" class="pt"></div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),2200);};
+const clone=o=>JSON.parse(JSON.stringify(o));
+
+/* ---------- IndexedDB ---------- */
+let db,mem=null;
+const openDB=()=>new Promise((res,rej)=>{const r=indexedDB.open('westin-inspect',1);r.onupgradeneeded=()=>{r.result.createObjectStore('kv');r.result.createObjectStore('photos');};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});
+const done=t=>new Promise((res,rej)=>{t.oncomplete=()=>res();t.onerror=t.onabort=()=>rej(t.error);});
+const rq=r=>new Promise((res,rej)=>{r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});
+const dbGet=(s,k)=>mem?Promise.resolve(mem[s].get(k)):rq(db.transaction(s).objectStore(s).get(k));
+async function dbPut(s,k,v){if(mem){mem[s].set(k,v);return;}const t=db.transaction(s,'readwrite');t.objectStore(s).put(v,k);await done(t);}
+async function dbDel(s,k){if(mem){mem[s].delete(k);return;}const t=db.transaction(s,'readwrite');t.objectStore(s).delete(k);await done(t);}
+async function dbClear(s){if(mem){mem[s].clear();return;}const t=db.transaction(s,'readwrite');t.objectStore(s).clear();await done(t);}
+
+/* ---------- 基本データ ---------- */
+const FLOORS=[3,5,7,9,11,13,15,17,19,21,23];
+const ROOMS_PER_FLOOR=21;
+const roomNo=(f,n)=>String(f*100+n).padStart(4,'0'); // 3F・01 → 0301、21F・01 → 2101
+const pad=n=>String(n).padStart(2,'0');
+const DEF_GRADES=[{id:'gs',name:'スタンダード'},{id:'ge',name:'エグゼクティブ'},{id:'gl',name:'ラグジュアリー'}];
+const DEF_FG={3:'gs',5:'gs',7:'gs',9:'gs',11:'ge',13:'ge',15:'ge',17:'gl',19:'gl',21:'gl'};
+const DEF_G23={id:'g23',name:'23F'};
+const DEF_T23=[{id:'p2',name:'23F 2ベッド（2層）',pull:0},{id:'p4a',name:'23F 4ベッド（3層）',pull:0},{id:'p4b',name:'23F 4ベッド（2層）',pull:0},{id:'p5',name:'23F 5ベッド（3層）',pull:0},{id:'p7',name:'23F 7ベッド（3層）',pull:0},{id:'pk',name:'23F キング（3層）',pull:0}];
+const DEF_R23={1:'p2',2:'p4a',3:'p7',4:'pk',5:'p5',6:'p4a',7:'p4b',8:'p4b',9:'p4a',10:'p7',11:'pk',12:'p5',13:'p4a',14:'p4b',15:'p4b',16:'p4a',17:'p7',18:'pk',19:'p5',20:'p4a',21:'p2'};
+const DEF_A23=['中階：入口','中階：ベッドルーム','中階：クローゼット','階段（中階⇄上階）','上階：寝室','上階：別室','上階：洗面','上階：バス・シャワー','上階：トイレ','階段（中階⇄下階）','下階：リビング','下階：収納ベッド','下階：洗面','下階：バスルーム','下階：トイレ','最終確認'];
+// 通常階の見本 → 23F用に読み替え（通常の上階＝23Fの中階、3層目＝23Fの上階）
+function area23(a){if(a.startsWith('3層目：階段'))return '階段（中階⇄上階）';if(a.startsWith('3層目：'))return '上階：'+a.slice(4);if(a.startsWith('上階：'))return '中階：'+a.slice(3);if(a==='階段')return '階段（中階⇄下階）';return a;}
+const text23=t=>t.replace(/3層目/g,'上階');
+const DEF_TYPES=[{id:'b2',name:'2ベッド',pull:2},{id:'b3',name:'3ベッド',pull:2},{id:'b4',name:'4ベッド',pull:0},{id:'bk',name:'キング',pull:2},{id:'b5',name:'5ベッド',pull:2}];
+const DEF_ROOMS={1:'b2',2:'b2',3:'b5',4:'bk',5:'b3',6:'b2',7:'b4',8:'b4',9:'b2',10:'b5',11:'bk',12:'b3',13:'b2',14:'b4',15:'b4',16:'b2',17:'b5',18:'bk',19:'b3',20:'b2',21:'b2'};
+const DEF_AREAS=['上階：入口','上階：ベッドルーム','上階：クローゼット','階段','下階：リビング','下階：収納ベッド','下階：洗面','下階：バスルーム','下階：トイレ','最終確認'];
+const TYPE_COLORS=['#5B8DB8','#D9822B','#7A9E3E','#B5446E','#7B61B0','#3E9E96','#A0785A','#C9A227','#4F6D8F','#D2691E','#6B8E23','#9C4F96','#2F8F6F'];
+const DEFAULT={v:3,numFmt:2,has23:1,grades:[...DEF_GRADES,DEF_G23],floorGrade:{...DEF_FG,23:'g23'},gradeOv:{},types:[...DEF_TYPES,...DEF_T23],rooms:DEF_ROOMS,floorRooms:{23:DEF_R23},areas:DEF_AREAS,gradeAreas:{g23:DEF_A23},a23:1,items:[]};
+
+let S,cur,room=null; // cur=表示中のグレードID, room={f,n}
+const save=()=>dbPut('kv','data',S);
+const typeColor=tid=>TYPE_COLORS[Math.max(0,S.types.findIndex(t=>t.id===tid))%TYPE_COLORS.length];
+const gIdx=gid=>Math.max(0,S.grades.findIndex(g=>g.id===gid));
+const gName=gid=>(S.grades.find(g=>g.id===gid)||{}).name||'未設定';
+const tName=tid=>(S.types.find(t=>t.id===tid)||{}).name||'未設定';
+const gradeOf=(f,n)=>S.gradeOv[roomNo(f,n)]||S.floorGrade[f];
+const itemsOf=gid=>S.items.filter(i=>i.gradeId===gid).sort((a,b)=>a.order-b.order);
+const renumber=gid=>itemsOf(gid).forEach((it,i)=>it.order=i+1);
+const typeAt=(f,n)=>(S.floorRooms&&S.floorRooms[f]&&S.floorRooms[f][n])||S.rooms[n];
+const roomType=()=>room?typeAt(room.f,room.n):null;
+function typesForGrade(gid){const ids=new Set();for(const f of FLOORS)for(let n=1;n<=ROOMS_PER_FLOOR;n++)if(gradeOf(f,n)===gid)ids.add(typeAt(f,n));
+  const out=S.types.filter(t=>ids.has(t.id));return out.length?out:S.types;}
+function roomsOfType(tid){ // 凡例用：「01・02」や「23F：03・10」
+  const out=[];const g=Object.keys(S.rooms).filter(n=>S.rooms[n]===tid&&FLOORS.some(f=>!(S.floorRooms||{})[f]));if(g.length)out.push(g.map(pad).join('・'));
+  for(const [f,m] of Object.entries(S.floorRooms||{})){const l=Object.keys(m).filter(n=>m[n]===tid);if(l.length)out.push(`${f}F：${l.map(pad).join('・')}`);}
+  return out.join('　');}
+const visible=it=>!room||!it.types||!it.types.length||it.types.includes(roomType());
+function setsText(it,tid){ // tid指定時はその部屋タイプの数
+  const u=esc(it.unit||'');
+  if(it.setsBy){
+    if(tid){const v=it.setsBy[tid];return (v===''||v==null)?'':`${esc(v)}${u}`;}
+    const parts=typesForGrade(it.gradeId).filter(t=>!it.types||!it.types.length||it.types.includes(t.id)).map(t=>{const v=it.setsBy[t.id];return (v===''||v==null)?null:`${esc(t.name)} ${esc(v)}${u}`;}).filter(Boolean);
+    return parts.join('／');
+  }
+  return (it.sets===''||it.sets==null)?'':`${esc(it.sets)}${u}`;
+}
+function migrate(){
+  if(S.v===3){fixNumFmt();add23();fixAreas23();return;}
+  const typesOk=Array.isArray(S.types)&&S.types.some(t=>t.pull!=null);
+  const oldItems=(S.items||[]).filter(it=>typesOk&&S.types.some(t=>t.id===it.typeId));
+  if(!typesOk)S.types=clone(DEF_TYPES);
+  S.rooms=S.rooms||clone(DEF_ROOMS);
+  S.grades=clone(DEF_GRADES);S.floorGrade=clone(DEF_FG);S.gradeOv={};
+  S.areas=S.areas&&S.areas.length?S.areas:clone(DEF_AREAS);
+  S.items=oldItems.map(it=>{const n={...it,gradeId:it.scope==='lux'?'gl':'gs',types:[it.typeId],setsBy:null};delete n.typeId;delete n.scope;return n;});
+  delete S.luxFrom;S.v=3;S.numFmt=2;add23();fixAreas23();
+  for(const g of S.grades)renumber(g.id);
+}
+
+function add23(){ // 23Fを追加（既存データ向け）
+  if(S.has23)return;
+  if(!S.grades.some(g=>g.id==='g23'))S.grades.push({...DEF_G23});
+  S.floorGrade[23]='g23';
+  for(const t of DEF_T23)if(!S.types.some(x=>x.id===t.id))S.types.push({...t});
+  S.floorRooms=S.floorRooms||{};S.floorRooms[23]={...DEF_R23};
+  S.has23=1;
+}
+function fixAreas23(){ // 23Fを「上階・中階・下階」のエリアに切り替え
+  if(S.a23)return;
+  S.gradeAreas=S.gradeAreas||{};if(!S.gradeAreas.g23)S.gradeAreas.g23=clone(DEF_A23);
+  S.areas=S.areas.filter(a=>!a.startsWith('3層目：'));
+  for(const it of S.items.filter(x=>x.gradeId==='g23')){
+    if(/3層目への階段/.test(it.text))it.area='階段（中階⇄上階）';
+    else if(!S.gradeAreas.g23.includes(it.area))it.area=area23(it.area);
+    it.text=text23(it.text).replace('上階への階段','上階への階段');
+    if(!S.gradeAreas.g23.includes(it.area))S.gradeAreas.g23.push(it.area);
+  }
+  // 23Fの並び：エリア順に並べ直す（同じエリア内の順番は保つ）
+  const A=S.gradeAreas.g23,list=itemsOf('g23');
+  list.sort((a,b)=>(A.indexOf(a.area)-A.indexOf(b.area))||(a.order-b.order)).forEach((x,i)=>x.order=i+1);
+  S.a23=1;
+}
+const areasOf=gid=>(S.gradeAreas&&S.gradeAreas[gid])||S.areas;
+function fixNumFmt(){ // 旧表記(1000+階×100+番号)で保存された個別グレードを新表記へ
+  if(S.numFmt===2)return;
+  const ov={};for(const [k,g] of Object.entries(S.gradeOv||{})){const x=+k-1000,f=Math.floor(x/100),n=x%100;if(FLOORS.includes(f))ov[roomNo(f,n)]=g;}
+  S.gradeOv=ov;S.numFmt=2;
+}
+/* ---------- 写真（本体1024px＋サムネ240px を data URL で保存） ---------- */
+const blobToDataURL=b=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(new Error('ファイルを読み込めませんでした'));r.readAsDataURL(b);});
+const urls=new Map();
+async function photoURL(id,thumb){
+  const key=thumb?id+':t':id;if(urls.has(key))return urls.get(key);
+  let v=await dbGet('photos',key);if(!v&&thumb)v=await dbGet('photos',id);if(!v)return '';
+  if(typeof v!=='string')v=await blobToDataURL(v);
+  urls.set(key,v);return v;
+}
+async function delPhoto(id){await dbDel('photos',id);await dbDel('photos',id+':t');urls.delete(id);urls.delete(id+':t');}
+async function copyPhoto(id){const nid=uid();const a=await dbGet('photos',id),t=await dbGet('photos',id+':t');if(!a)return null;await dbPut('photos',nid,a);if(t)await dbPut('photos',nid+':t',t);return nid;}
+function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('この画像形式は読み込めませんでした'));i.src=src;});}
+function shrink(img,max,q){const w=img.naturalWidth,h=img.naturalHeight,s=Math.min(1,max/Math.max(w,h));const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w*s));c.height=Math.max(1,Math.round(h*s));c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c.toDataURL('image/jpeg',q);}
+async function compress(file){let img,obj=null;try{obj=URL.createObjectURL(file);img=await loadImg(obj);}catch(_){img=await loadImg(await blobToDataURL(file));}finally{if(obj)URL.revokeObjectURL(obj);}return {full:shrink(img,1024,0.72),thumb:shrink(img,240,0.6)};}
+const nextFrame=()=>new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
+
+/* ---------- 描画 ---------- */
+const persist=()=>{try{localStorage.setItem('westin-cur',cur);localStorage.setItem('westin-room',room?JSON.stringify(room):'');}catch(_){}};
+function renderHead(){
+  $('#tabs').innerHTML=S.grades.map(g=>`<button class="tab${g.id===cur?' on':''}" data-id="${g.id}">${esc(g.name)}<small>${itemsOf(g.id).length}</small></button>`).join('');
+  if(room){$('#roomBtn').innerHTML=`🚪 ${roomNo(room.f,room.n)} <small>${room.f}F・${esc(gName(cur))}・${esc(tName(roomType()))}</small>`;$('#roomClr').style.display='';}
+  else{$('#roomBtn').innerHTML='🚪 部屋番号から選ぶ <small>（フロア → 部屋）</small>';$('#roomClr').style.display='none';}
+}
+async function render(){
+  renderHead();
+  const all=itemsOf(cur),list=all.filter(visible),el=$('#list');
+  let head='';
+  if(room){const t=S.types.find(x=>x.id===roomType())||{};const ov=S.gradeOv[roomNo(room.f,room.n)];
+    head=`<div class="rinfo"><div class="rn">${roomNo(room.f,room.n)}</div><div class="rd"><span class="chip">${room.f}F</span><span class="chip g${gIdx(cur)%4}">${esc(gName(cur))}${ov?'（この部屋だけ）':''}</span><span class="chip">${esc(t.name||'')}</span>${t.pull?`<span class="chip pull">収納ベッド${t.pull}台</span>`:'<span class="chip">収納ベッドなし</span>'}<span class="chip">${list.length}項目</span></div></div>`;}
+  if(!all.length){el.innerHTML=head+`<div class="empty">「${esc(gName(cur))}」にはまだ項目がありません。<br>ここに入れた項目は、${esc(gName(cur))}の全部屋に反映されます。<br><br><button class="btn pri" data-tpl="1">メゾネットの見本を入れる</button></div>`;return;}
+  let html=head,prev=null;
+  list.forEach((it,i)=>{
+    if(it.area!==prev){html+=`<div class="sec">${esc(it.area||'エリア未設定')}</div>`;prev=it.area;}
+    const st=setsText(it,roomType());
+    const tg=(!room&&it.types&&it.types.length)?`<span class="chip tg">${it.types.map(tName).map(esc).join('・')}のみ</span>`:'';
+    html+=`<div class="item"><div class="num">${i+1}</div><div class="body" data-edit="${it.id}">
+      <div class="txt">${esc(it.text)}</div>
+      <div class="meta">${st?`<span class="chip set">${st}</span>`:''}${tg}</div>
+      ${it.note?`<div class="note">${esc(it.note)}</div>`:''}
+      ${it.photos.length?`<div class="thumbs">${it.photos.map(p=>`<img data-ph="${p}" alt="">`).join('')}</div>`:''}
+    </div><div class="ops"><button data-up="${it.id}" ${i===0?'disabled':''} aria-label="上へ">▲</button><button data-down="${it.id}" ${i===list.length-1?'disabled':''} aria-label="下へ">▼</button></div></div>`;
+  });
+  el.innerHTML=html;
+  for(const img of el.querySelectorAll('img[data-ph]'))img.src=await photoURL(img.dataset.ph,true);
+}
+
+/* ---------- 一覧の操作 ---------- */
+$('#tabs').onclick=e=>{const b=e.target.closest('.tab');if(!b)return;cur=b.dataset.id;room=null;persist();render();window.scrollTo(0,0);};
+$('#list').onclick=async e=>{
+  const img=e.target.closest('img[data-ph]');
+  if(img){e.stopPropagation();$('#viewerImg').src=await photoURL(img.dataset.ph);$('#viewer').classList.add('show');return;}
+  const up=e.target.closest('[data-up]'),dn=e.target.closest('[data-down]');
+  if(up||dn){const list=itemsOf(cur).filter(visible),i=list.findIndex(x=>x.id===(up?up.dataset.up:dn.dataset.down)),j=up?i-1:i+1;
+    if(j<0||j>=list.length)return;[list[i].order,list[j].order]=[list[j].order,list[i].order];await save();render();return;}
+  if(e.target.closest('[data-tpl]')){await loadTemplate(cur);return;}
+  const ed=e.target.closest('[data-edit]');if(ed)openEdit(ed.dataset.edit);
+};
+$('#viewer').onclick=()=>$('#viewer').classList.remove('show');
+$('#addBtn').onclick=()=>openEdit(null);
+
+/* ---------- 部屋選択 ---------- */
+let pickF=null,gEdit=false;
+function renderPicker(){
+  $('#floorBtns').innerHTML=FLOORS.map(f=>`<button class="${f===pickF?'on':''}" data-f="${f}">${f}F<small>${esc(gName(S.floorGrade[f]))}</small></button>`).join('');
+  $('#gEditBar').style.display=gEdit?'':'none';$('#gEditBtn').textContent=gEdit?'✔ グレード変更を終える':'✏ 部屋ごとのグレードを変える';
+  if(pickF==null){$('#roomLbl').style.display='none';$('#roomBtns').innerHTML='';$('#legend').innerHTML='';return;}
+  $('#roomLbl').style.display='';$('#roomLbl').textContent=`${pickF}F の部屋（標準：${gName(S.floorGrade[pickF])}）`;
+  let h='';
+  for(let n=1;n<=ROOMS_PER_FLOOR;n++){const tid=typeAt(pickF,n),g=gradeOf(pickF,n),ov=!!S.gradeOv[roomNo(pickF,n)];
+    h+=`<button data-n="${n}" class="${room&&room.f===pickF&&room.n===n?'on':''}" style="border-left-color:${typeColor(tid)}${ov?';background:#FFF6DB':''}">${roomNo(pickF,n)}<small>${esc(tName(tid))}</small>${(ov||gEdit)?`<small>${ov?'★':''}${esc(gName(g))}</small>`:''}</button>`;}
+  $('#roomBtns').innerHTML=h;
+  $('#legend').innerHTML=typesForGrade(S.floorGrade[pickF]).map(t=>`<span style="--c:${typeColor(t.id)}">${esc(t.name)}</span>`).join('')+'<span style="--c:#FFF6DB">★ フロア標準と違うグレード</span>';
+}
+$('#roomBtn').onclick=()=>{pickF=room?room.f:null;gEdit=false;renderPicker();$('#roomOv').classList.add('show');};
+$('#roomClr').onclick=()=>{room=null;persist();render();};
+$('#roomCancel').onclick=()=>{$('#roomOv').classList.remove('show');render();};
+$('#gEditBtn').onclick=()=>{gEdit=!gEdit;if(gEdit&&pickF==null)pickF=FLOORS[0];renderPicker();};
+$('#roomOv').onclick=async e=>{
+  if(e.target===e.currentTarget){e.currentTarget.classList.remove('show');render();return;}
+  const fb=e.target.closest('[data-f]');if(fb){pickF=+fb.dataset.f;renderPicker();return;}
+  const rb=e.target.closest('[data-n]');if(!rb)return;const n=+rb.dataset.n,no=roomNo(pickF,n);
+  if(gEdit){ // グレードを順に切り替え（フロア標準に戻ったら上書き解除）
+    const ids=S.grades.map(g=>g.id),next=ids[(ids.indexOf(gradeOf(pickF,n))+1)%ids.length];
+    if(next===S.floorGrade[pickF])delete S.gradeOv[no];else S.gradeOv[no]=next;
+    await save();renderPicker();return;}
+  const g=gradeOf(pickF,n);
+  if(!S.grades.some(x=>x.id===g)){alert('この部屋のグレードが設定されていません。メニューの「設定」で設定してください。');return;}
+  if(!S.types.some(t=>t.id===typeAt(pickF,n))){alert('この部屋番号のタイプが設定されていません。メニューの「設定」で設定してください。');return;}
+  room={f:pickF,n};cur=g;persist();$('#roomOv').classList.remove('show');render();window.scrollTo(0,0);
+};
+
+/* ---------- 編集 ---------- */
+let E=null;
+function areaChips(){$('#fArea').innerHTML=areasOf(cur).map(a=>`<button type="button" class="${a===E.area?'on':''}">${esc(a)}</button>`).join('');}
+$('#fArea').onclick=e=>{const b=e.target.closest('button');if(!b)return;E.area=b.textContent;areaChips();};
+function typeChips(){
+  $('#fTypes').innerHTML=`<button type="button" data-t="" class="${!E.types.length?'on':''}">全タイプ</button>`+typesForGrade(cur).map(t=>`<button type="button" data-t="${t.id}" class="${E.types.includes(t.id)?'on':''}">${esc(t.name)}</button>`).join('');
+  setByRows();
+}
+$('#fTypes').onclick=e=>{const b=e.target.closest('[data-t]');if(!b)return;const id=b.dataset.t;
+  if(!id)E.types=[];else E.types=E.types.includes(id)?E.types.filter(x=>x!==id):[...E.types,id];
+  if(E.types.length===typesForGrade(cur).length)E.types=[];typeChips();};
+function readSetBy(){$('#setBy').querySelectorAll('input').forEach(i=>E.setsBy[i.dataset.by]=i.value===''?'':Number(i.value));}
+function setByRows(){
+  if(E.mode==='by')readSetBy();
+  $('#fSetMode').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===E.mode));
+  $('#setOne').style.display=E.mode==='one'?'':'none';$('#setBy').style.display=E.mode==='by'?'':'none';
+  const ts=typesForGrade(cur).filter(t=>!E.types.length||E.types.includes(t.id));
+  $('#setBy').innerHTML=ts.map(t=>`<label><span style="flex:1">${esc(t.name)}</span><input type="number" inputmode="numeric" min="0" data-by="${t.id}" value="${E.setsBy[t.id]??''}"></label>`).join('');
+}
+$('#fSetMode').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;if(E.mode==='by')readSetBy();E.mode=b.dataset.m;
+  if(E.mode==='by'&&$('#fSets').value!==''){for(const t of typesForGrade(cur))if(E.setsBy[t.id]==null||E.setsBy[t.id]==='')E.setsBy[t.id]=Number($('#fSets').value);}
+  setByRows();};
+async function photoRow(busy=0){
+  $('#fPhotos').innerHTML=E.photos.map(p=>`<div class="p"><img data-p="${p}" alt=""><button type="button" class="x" data-rm="${p}">✕</button></div>`).join('')+Array.from({length:busy},()=>`<div class="busy">処理中…</div>`).join('');
+  for(const img of $('#fPhotos').querySelectorAll('img'))img.src=await photoURL(img.dataset.p,true);
+}
+$('#fPhotos').onclick=e=>{const b=e.target.closest('[data-rm]');if(!b)return;const id=b.dataset.rm;E.photos=E.photos.filter(x=>x!==id);E.removed.push(id);photoRow();};
+function openEdit(id){
+  const list=itemsOf(cur),shown=list.filter(visible),it=id?S.items.find(x=>x.id===id):null,last=shown[shown.length-1];
+  E={id,area:it?it.area:(last?last.area:areasOf(cur)[0]),types:it?[...(it.types||[])]:[],mode:it&&it.setsBy?'by':'one',setsBy:it&&it.setsBy?{...it.setsBy}:{},photos:it?[...it.photos]:[],added:[],removed:[]};
+  $('#editTitle').textContent=it?'項目を編集':'項目を追加';
+  $('#editGrade').textContent=`「${gName(cur)}」の全部屋に反映されます`;
+  $('#fOrder').value=it?(shown.indexOf(it)+1||list.indexOf(it)+1):shown.length+1;
+  $('#fText').value=it?it.text:'';
+  $('#fSets').value=it&&!it.setsBy?(it.sets??''):'';
+  $('#fUnit').value=it?(it.unit||''):'';
+  $('#fNote').value=it?(it.note||''):'';
+  $('#delBtn').style.visibility=it?'visible':'hidden';
+  areaChips();typeChips();photoRow();
+  $('#editOv').classList.add('show');
+}
+$('#setMinus').onclick=()=>{const v=parseInt($('#fSets').value||'0',10);$('#fSets').value=Math.max(0,v-1);};
+$('#setPlus').onclick=()=>{const v=parseInt($('#fSets').value||'0',10);$('#fSets').value=v+1;};
+$('#camBtn').onclick=()=>$('#camIn').click();
+$('#libBtn').onclick=()=>$('#libIn').click();
+let busyN=0;
+async function addFiles(files){
+  if(!files.length)return;
+  busyN+=files.length;$('#saveBtn').disabled=true;$('#saveBtn').textContent='写真を処理中…';
+  await photoRow(busyN);await nextFrame();
+  for(const f of files){
+    try{const r=await compress(f);const pid=uid();await dbPut('photos',pid,r.full);await dbPut('photos',pid+':t',r.thumb);
+      if(E){E.photos.push(pid);E.added.push(pid);}else await delPhoto(pid);}
+    catch(err){alert('写真を追加できませんでした：'+(err&&err.message||err));}
+    busyN--;if(E)await photoRow(busyN);await nextFrame();
+  }
+  if(!busyN){$('#saveBtn').disabled=false;$('#saveBtn').textContent='保存';}
+}
+$('#camIn').onchange=e=>{addFiles([...e.target.files]);e.target.value='';};
+$('#libIn').onchange=e=>{addFiles([...e.target.files]);e.target.value='';};
+async function closeEdit(commit){if(!commit)for(const p of E.added)await delPhoto(p);$('#editOv').classList.remove('show');E=null;}
+$('#cancelBtn').onclick=()=>closeEdit(false);
+$('#saveBtn').onclick=async()=>{try{await saveItem();}catch(err){alert('保存できませんでした：'+err.message);}};
+async function saveItem(){
+  const text=$('#fText').value.trim();if(!text){alert('確認項目を入力してください');return;}
+  if(E.mode==='by')readSetBy();
+  let it=E.id?S.items.find(x=>x.id===E.id):null;
+  if(!it){it={id:uid(),gradeId:cur};S.items.push(it);}
+  let setsBy=null;
+  if(E.mode==='by'){setsBy={};for(const t of typesForGrade(cur))if(!E.types.length||E.types.includes(t.id))setsBy[t.id]=E.setsBy[t.id]??'';}
+  Object.assign(it,{area:E.area,types:[...E.types],text,sets:E.mode==='one'&&$('#fSets').value!==''?Number($('#fSets').value):'',setsBy,unit:$('#fUnit').value.trim(),note:$('#fNote').value.trim(),photos:E.photos});
+  // 順番＝表示中の並びでの位置
+  const full=itemsOf(cur).filter(x=>x!==it),shown=full.filter(visible);
+  let pv=parseInt($('#fOrder').value,10);if(!(pv>=1))pv=shown.length+1;
+  const anchor=shown[Math.min(pv,shown.length+1)-1];
+  full.splice(anchor?full.indexOf(anchor):full.length,0,it);full.forEach((x,i)=>x.order=i+1);
+  for(const p of E.removed)await delPhoto(p);
+  await save();await closeEdit(true);render();toast('保存しました');
+}
+$('#delBtn').onclick=async()=>{
+  if(!confirm(`この項目を削除しますか？\n（${gName(cur)}の全部屋から消えます）`))return;
+  const it=S.items.find(x=>x.id===E.id);
+  for(const p of new Set([...it.photos,...E.added]))await delPhoto(p);
+  S.items=S.items.filter(x=>x!==it);renumber(cur);
+  await save();$('#editOv').classList.remove('show');E=null;render();toast('削除しました');
+};
+
+/* ---------- メニュー ---------- */
+$('#menuBtn').onclick=async()=>{
+  $('#menuOv').classList.add('show');
+  try{const e=await navigator.storage.estimate();$('#usage').textContent=`使用容量：約${(e.usage/1048576).toFixed(1)}MB　項目数：${S.items.length}`;}catch(_){$('#usage').textContent=`項目数：${S.items.length}`;}
+};
+$('#menuOv').onclick=async e=>{
+  if(e.target===e.currentTarget){e.currentTarget.classList.remove('show');return;}
+  const a=e.target.closest('[data-act]')?.dataset.act;if(!a)return;
+  $('#menuOv').classList.remove('show');
+  if(a==='viewAll')exportViewer(S.grades.map(g=>g.id));
+  if(a==='viewCur')exportViewer([cur]);
+  if(a==='printAll')doPrint(S.grades.map(g=>g.id));
+  if(a==='printCur')doPrint([cur]);
+  if(a==='settings')openSettings();
+  if(a==='copy')openCopy();
+  if(a==='tpl'&&confirm(`見本の項目を「${gName(cur)}」の末尾に追加しますか？`))loadTemplate(cur);
+  if(a==='tplAll')loadTemplateAll();
+  if(a==='clear')clearGrade();
+  if(a==='backup')backup();
+  if(a==='restore')$('#restoreIn').click();
+  if(a==='help')$('#helpOv').classList.add('show');
+};
+$('#helpClose').onclick=()=>$('#helpOv').classList.remove('show');
+async function clearGrade(){
+  const list=itemsOf(cur);if(!list.length){alert('項目がありません');return;}
+  if(!confirm(`「${gName(cur)}」の${list.length}項目をすべて削除します。よろしいですか？`))return;
+  if(!confirm('元に戻せません。本当に削除しますか？'))return;
+  for(const it of list)for(const p of it.photos)await delPhoto(p);
+  S.items=S.items.filter(x=>x.gradeId!==cur);await save();render();toast('削除しました');
+}
+
+/* ---------- 書き出し ---------- */
+async function deliver(blob,name){
+  const file=new File([blob],name,{type:blob.type});
+  if(matchMedia('(pointer:coarse)').matches&&navigator.canShare&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:name});return;}catch(err){if(err.name==='AbortError')return;}
+  }
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
+}
+const today=()=>{const d=new Date();return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;};
+function roomsOfGrade(gid){const out=[];for(const f of FLOORS)for(let n=1;n<=ROOMS_PER_FLOOR;n++)if(gradeOf(f,n)===gid)out.push(roomNo(f,n));return out;}
+async function docBody(gids,src){
+  let h='';
+  for(const gid of gids){
+    const list=itemsOf(gid),fl=FLOORS.filter(f=>S.floorGrade[f]===gid);
+    const ovs=Object.entries(S.gradeOv).filter(([,g])=>g===gid).map(([no])=>no);
+    h+=`<section class="typ" id="${gid}"><h2>${esc(gName(gid))}　<span style="font-size:12px;font-weight:400">全${list.length}項目</span></h2><div style="font-size:12px;color:#555;margin:-4px 0 8px">標準フロア：${fl.map(f=>f+'F').join('・')||'—'}${ovs.length?`　＋ 個別：${ovs.join('・')}`:''}</div>`;
+    if(!list.length)h+='<p style="color:#888">項目なし</p>';
+    let prev=null;
+    for(const [i,it] of list.entries()){
+      if(it.area!==prev){h+=`<div class="pa">■ ${esc(it.area||'エリア未設定')}</div>`;prev=it.area;}
+      const st=setsText(it,null),tg=it.types&&it.types.length?`<div class="m" style="color:#7A5A00">※${it.types.map(tName).map(esc).join('・')}の部屋のみ</div>`:'';
+      const imgs=[];for(const p of it.photos){const u=await src(p);if(u)imgs.push(`<img src="${u}" alt="">`);}
+      h+=`<div class="pi"><div class="n">${i+1}</div><div><div class="t">${esc(it.text)}</div>${tg}${st?`<div class="m">セット数：<b>${st}</b></div>`:''}${it.note?`<div class="nt">${esc(it.note)}</div>`:''}${imgs.length?`<div class="im">${imgs.join('')}</div>`:''}</div></div>`;
+    }
+    h+='</section>';
+  }
+  return h;
+}
+async function doPrint(gids){
+  $('#print').innerHTML=await docBody(gids,photoURL);
+  const imgs=[...$('#print').querySelectorAll('img')];
+  await Promise.all(imgs.map(i=>i.complete?0:new Promise(r=>{i.onload=i.onerror=r;})));
+  window.print();
+}
+async function exportViewer(gids){
+  toast('書き出し中…');
+  const C='#2B4A45';
+  const css=`body{font-family:-apple-system,"Hiragino Sans","Meiryo UI",sans-serif;margin:0;padding:16px;color:#222;background:#fff}
+h1{font-size:20px;margin:0 0 4px;color:${C}}.d{font-size:12px;color:#777;margin-bottom:12px}
+.nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}.nav a{background:${C};color:#fff;text-decoration:none;padding:6px 12px;border-radius:99px;font-size:13px}
+.typ{margin-bottom:28px}.typ h2{font-size:18px;border-bottom:3px solid ${C};padding-bottom:4px;color:${C}}
+.pa{font-size:14px;font-weight:700;color:${C};margin:14px 0 6px}
+.pi{display:flex;gap:10px;border:1px solid #ccc;border-radius:8px;padding:10px;margin-bottom:8px;break-inside:avoid;page-break-inside:avoid}
+.n{flex:none;width:32px;height:32px;border-radius:50%;background:${C};color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.t{font-weight:700;font-size:15px;line-height:1.45}.m{font-size:13px;margin-top:3px}.nt{font-size:13px;color:#555;white-space:pre-wrap;margin-top:3px}
+.im{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.im img{width:100%;max-width:320px;border-radius:6px;border:1px solid #ddd}
+.wrap{overflow-x:auto}.idx{border-collapse:collapse;font-size:11px;margin-bottom:6px}.idx th,.idx td{border:1px solid #ccc;padding:2px;text-align:center;white-space:nowrap}.idx th{background:#eee}
+.idx a{text-decoration:none;color:#222;display:block;border-radius:3px;padding:2px 3px;border-left:4px solid}
+@media print{.nav{display:none}.typ{page-break-after:always}.typ:last-child{page-break-after:auto}}`;
+  const body=await docBody(gids,p=>photoURL(p));
+  const nav=gids.length>1?`<div class="nav">${gids.map(id=>`<a href="#${id}">${esc(gName(id))}</a>`).join('')}</div>`:'';
+  const GB=['#E3ECEA','#DDE7F5','#F3E7C6','#F1DDE6','#EEE'];
+  let idx=`<h2 style="font-size:16px;color:${C};margin:0 0 6px">部屋番号から探す</h2><p style="font-size:12px;color:#555;margin:0 0 6px">部屋番号を押すと、その部屋のグレードのチェック項目に移動します。背景色＝グレード、左の線の色＝部屋タイプ。「※〇〇の部屋のみ」の項目は、該当する部屋だけ確認してください。</p><div class="wrap"><table class="idx"><tr><th>階</th>${Array.from({length:ROOMS_PER_FLOOR},(_,i)=>`<th>${pad(i+1)}</th>`).join('')}</tr>`;
+  for(const f of FLOORS){idx+=`<tr><th>${f}F</th>`;
+    for(let n=1;n<=ROOMS_PER_FLOOR;n++){const g=gradeOf(f,n),tid=typeAt(f,n);
+      idx+=gids.includes(g)?`<td><a href="#${g}" style="background:${GB[gIdx(g)%GB.length]};border-left-color:${typeColor(tid)}">${roomNo(f,n)}</a></td>`:'<td>—</td>';}
+    idx+='</tr>';}
+  idx+=`</table></div><div style="font-size:11px;margin-bottom:16px;line-height:1.8">${S.grades.map((g,i)=>`<span style="display:inline-block;margin-right:8px;background:${GB[i%GB.length]};padding:0 6px">${esc(g.name)}</span>`).join('')}<br>${S.types.map(t=>`<span style="display:inline-block;margin-right:8px;border-left:4px solid ${typeColor(t.id)};padding-left:4px">${esc(t.name)}（${roomsOfType(t.id)||'—'}）</span>`).join('')}</div>`;
+  const d=new Date();
+  const names=gids.map(gName);
+  const html=`<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ウェスティン 客室チェック項目 ${esc(names.join('・'))}</title><style>${css}</style></head><body><h1>ウェスティン 客室チェック項目</h1><div class="d">作成日：${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}</div>${idx}${nav}${body}</body></html>`;
+  await deliver(new Blob([html],{type:'text/html'}),`ウェスティン_客室チェック項目_${gids.length>1?'全グレード':names[0]}_${today()}.html`);
+}
+
+/* ---------- バックアップ ---------- */
+async function backup(){
+  toast('書き出し中…');const photos={};
+  for(const it of S.items)for(const p of it.photos){const u=await photoURL(p);if(u)photos[p]=u;}
+  await deliver(new Blob([JSON.stringify({app:'westin-inspect',version:3,data:S,photos})],{type:'application/json'}),`ウェスティン点検_バックアップ_${today()}.json`);
+}
+$('#restoreIn').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    const j=JSON.parse(await f.text());
+    if(j.app!=='westin-inspect'||!j.data)throw new Error('このアプリのバックアップではありません');
+    if(!confirm('今の端末のデータを、バックアップの内容で置き換えます。よろしいですか？'))return;
+    await dbClear('photos');urls.clear();
+    for(const [k,v] of Object.entries(j.photos||{})){await dbPut('photos',k,v);try{await dbPut('photos',k+':t',shrink(await loadImg(v),240,0.6));}catch(_){}}
+    S=j.data;migrate();cur=S.grades[0].id;room=null;persist();await save();render();toast('読み込みました');
+  }catch(err){alert('読み込めませんでした：'+err.message);}
+};
+
+/* ---------- 設定 ---------- */
+let T=null;
+const rowBtns=(k,i)=>`<button data-${k}u="${i}">▲</button><button data-${k}d="${i}">▼</button><button data-${k}x="${i}" style="color:#C0392B">✕</button>`;
+function settingsRows(){
+  $('#gradeRows').innerHTML=T.grades.map((g,i)=>`<div class="trow"><input class="in" data-gi="${i}" value="${esc(g.name)}">${rowBtns('g',i)}</div>`).join('');
+  const gOpts=sel=>T.grades.map(g=>`<option value="${g.id}" ${g.id===sel?'selected':''}>${esc(g.name||'（名前なし）')}</option>`).join('');
+  $('#floorRows').innerHTML=FLOORS.map(f=>`<label>${f}F<select data-fg="${f}">${gOpts(T.floorGrade[f])}${T.grades.some(g=>g.id===T.floorGrade[f])?'':'<option selected value="">未設定</option>'}</select></label>`).join('');
+  const ovn=Object.keys(T.gradeOv).length;
+  $('#ovInfo').innerHTML=ovn?`フロア標準と違うグレードの部屋：${ovn}室（${Object.entries(T.gradeOv).map(([no,g])=>`${no}=${esc((T.grades.find(x=>x.id===g)||{}).name||'?')}`).join('、')}）　<button type="button" class="btn" id="ovReset" style="padding:4px 8px;font-size:12px">全部フロア標準に戻す</button>`:'';
+  $('#typeRows').innerHTML=T.types.map((t,i)=>`<div class="trow"><input class="in" data-ti="${i}" value="${esc(t.name)}"><input class="in" data-tp="${i}" type="number" inputmode="numeric" min="0" value="${t.pull??0}" style="flex:none;width:56px;text-align:center" title="収納ベッドの台数">${rowBtns('t',i)}</div>`).join('');
+  const sp=Object.keys(T.floorRooms).map(Number);
+  $('#mapSeg').innerHTML=`<button type="button" data-ms="0" class="${mapF?'':'on'}">${FLOORS.filter(f=>!sp.includes(f)).map(f=>f).join('・')}F（共通）</button>`+sp.map(f=>`<button type="button" data-ms="${f}" class="${mapF===f?'on':''}">${f}F専用</button>`).join('');
+  const M=mapF?T.floorRooms[mapF]:T.rooms;
+  $('#mapRows').innerHTML=Array.from({length:ROOMS_PER_FLOOR},(_,k)=>{const n=k+1;return `<label>${pad(n)}<select data-map="${n}">${T.types.map(t=>`<option value="${t.id}" ${M[n]===t.id?'selected':''}>${esc(t.name)}</option>`).join('')}${T.types.some(t=>t.id===M[n])?'':'<option selected value="">未設定</option>'}</select></label>`;}).join('');
+  const own=Object.keys(T.gradeAreas);
+  $('#areaSeg').innerHTML=`<button type="button" data-as="" class="${areaG?'':'on'}">${esc(T.grades.filter(g=>!own.includes(g.id)).map(g=>g.name).join('・'))||'共通'}</button>`+own.filter(id=>T.grades.some(g=>g.id===id)).map(id=>`<button type="button" data-as="${id}" class="${areaG===id?'on':''}">${esc(T.grades.find(g=>g.id===id).name)}専用</button>`).join('');
+  TA=areaG?T.gradeAreas[areaG]:T.areas;
+  $('#areaRows').innerHTML=TA.map((a,i)=>`<div class="trow"><input class="in" data-ai="${i}" value="${esc(a)}">${rowBtns('a',i)}</div>`).join('');
+}
+let mapF=0,areaG='',TA=null;
+function openSettings(){mapF=0;areaG='';T=clone({grades:S.grades,floorGrade:S.floorGrade,gradeOv:S.gradeOv,types:S.types,rooms:S.rooms,floorRooms:S.floorRooms||{},areas:S.areas,gradeAreas:S.gradeAreas||{}});settingsRows();$('#setOv').classList.add('show');}
+$('#setOv').oninput=e=>{const d=e.target.dataset,v=e.target.value;
+  if(d.gi!=null)T.grades[d.gi].name=v;if(d.ti!=null)T.types[d.ti].name=v;if(d.ai!=null)TA[d.ai]=v;
+  if(d.tp!=null)T.types[d.tp].pull=Math.max(0,parseInt(v||'0',10)||0);};
+$('#setOv').onchange=e=>{const d=e.target.dataset,v=e.target.value;if(d.fg)T.floorGrade[d.fg]=v;if(d.map){if(mapF)T.floorRooms[mapF][d.map]=v;else T.rooms[d.map]=v;}
+  if(d.fg){for(const no of Object.keys(T.gradeOv)){const f=Math.floor(+no/100);if(T.gradeOv[no]===T.floorGrade[f])delete T.gradeOv[no];}settingsRows();}};
+$('#setOv').onclick=e=>{
+  const as=e.target.closest('[data-as]');if(as){areaG=as.dataset.as;settingsRows();return;}
+  const ms=e.target.closest('[data-ms]');if(ms){mapF=+ms.dataset.ms;settingsRows();return;}
+  if(e.target.id==='ovReset'){if(confirm('部屋ごとのグレード変更をすべて解除して、フロア標準に戻しますか？')){T.gradeOv={};settingsRows();}return;}
+  const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+  const mv=(arr,i,j)=>{if(j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];settingsRows();};
+  for(const [k,arr] of [['g',T.grades],['t',T.types],['a',TA]]){
+    if(d[k+'u']!=null)mv(arr,+d[k+'u'],+d[k+'u']-1);
+    if(d[k+'d']!=null)mv(arr,+d[k+'d'],+d[k+'d']+1);
+  }
+  if(d.gx!=null){const g=T.grades[+d.gx],n=itemsOf(g.id).length;if(T.grades.length<=1){alert('グレードは1つ以上必要です');return;}
+    if(!confirm(`「${g.name}」を削除しますか？${n?`\n登録済みの${n}項目も削除されます。`:''}\nこのグレードのフロアは「未設定」になります。`))return;T.grades.splice(+d.gx,1);settingsRows();}
+  if(d.tx!=null){const t=T.types[+d.tx];if(T.types.length<=1){alert('部屋タイプは1つ以上必要です');return;}
+    if(!confirm(`「${t.name}」を削除しますか？\nこのタイプの部屋番号は「未設定」になります。`))return;T.types.splice(+d.tx,1);settingsRows();}
+  if(d.ax!=null){TA.splice(+d.ax,1);settingsRows();}
+};
+$('#addGrade').onclick=()=>{T.grades.push({id:'g'+uid(),name:'新しいグレード'});settingsRows();};
+$('#addType').onclick=()=>{T.types.push({id:'b'+uid(),name:'新しいタイプ',pull:0});settingsRows();};
+$('#addArea').onclick=()=>{TA.push('新しいエリア');settingsRows();};
+$('#setCancel').onclick=()=>$('#setOv').classList.remove('show');
+$('#setSave').onclick=async()=>{
+  const gk=new Set(T.grades.map(g=>g.id)),tk=new Set(T.types.map(t=>t.id));
+  for(const it of S.items.filter(x=>!gk.has(x.gradeId)))for(const p of it.photos)await delPhoto(p);
+  S.items=S.items.filter(x=>gk.has(x.gradeId));
+  for(const it of S.items){if(it.types)it.types=it.types.filter(x=>tk.has(x));if(it.setsBy)for(const k of Object.keys(it.setsBy))if(!tk.has(k))delete it.setsBy[k];}
+  const oldPull=Object.fromEntries(S.types.map(t=>[t.id,t.pull||0]));
+  S.grades=T.grades.map(g=>({...g,name:g.name.trim()||'名称未設定'}));
+  S.types=T.types.map(t=>({...t,name:t.name.trim()||'名称未設定'}));
+  S.floorGrade=T.floorGrade;S.gradeOv=Object.fromEntries(Object.entries(T.gradeOv).filter(([,g])=>gk.has(g)));
+  S.rooms=T.rooms;S.floorRooms=T.floorRooms;S.areas=T.areas.map(a=>a.trim()).filter(Boolean);S.gradeAreas=Object.fromEntries(Object.entries(T.gradeAreas).map(([g,l])=>[g,l.map(a=>a.trim()).filter(Boolean)]));
+  await syncPull(oldPull);
+  if(!gk.has(cur))cur=S.grades[0].id;
+  if(room&&(gradeOf(room.f,room.n)!==cur||!tk.has(typeAt(room.f,room.n))))room=null;
+  persist();await save();$('#setOv').classList.remove('show');render();toast('保存しました');
+};
+
+/* 収納ベッドの台数を変えたとき、プルダウンベッドの項目を追加・解除 */
+const PULL_AREA='下階：収納ベッド';
+const isPullItem=it=>it.area===PULL_AREA||/プルダウンベッド|収納ベッド/.test(it.text);
+async function syncPull(oldPull){
+  for(const t of S.types){
+    const was=oldPull[t.id]||0,now=t.pull||0;if(was===now)continue;
+    const grades=S.grades.filter(g=>typesForGrade(g.id).some(x=>x.id===t.id));
+    for(const g of grades){
+      const pis=itemsOf(g.id).filter(isPullItem);
+      if(now>0){
+        if(pis.length){ // 既存の収納ベッド項目にこのタイプを加える
+          for(const it of pis){if(it.types&&it.types.length&&!it.types.includes(t.id))it.types.push(t.id);if(it.setsBy)it.setsBy[t.id]=now;}
+        }else if(confirm(`「${t.name}」に収納ベッド${now}台を設定しました。\n「${g.name}」に収納ベッドの確認項目（収納時・使用時）を追加しますか？`)){
+          const AL=areasOf(g.id);if(!AL.includes(PULL_AREA))AL.splice(Math.max(0,AL.indexOf('下階：洗面')),0,PULL_AREA);
+          const list=itemsOf(g.id),ai=AL.indexOf(PULL_AREA);
+          let at=list.findIndex(x=>AL.indexOf(x.area)>ai);if(at<0)at=list.length;
+          const add=TEMPLATE.filter(r=>r[4]==='PULL').map(([area,text,unit,note])=>({id:uid(),gradeId:g.id,area,text,types:[t.id],sets:'',setsBy:{[t.id]:now},unit,note,photos:[]}));
+          S.items.push(...add);list.splice(at,0,...add);list.forEach((x,i)=>x.order=i+1);
+        }
+      }else if(pis.some(it=>it.types&&it.types.includes(t.id))&&confirm(`「${t.name}」の収納ベッドを0台にしました。\n「${g.name}」の収納ベッドの項目から、このタイプを外しますか？`)){
+        for(const it of pis.filter(x=>x.types&&x.types.includes(t.id))){
+          it.types=it.types.filter(x=>x!==t.id);if(it.setsBy)delete it.setsBy[t.id];
+          if(!it.types.length){for(const p of it.photos)await delPhoto(p);S.items=S.items.filter(x=>x!==it);}
+        }
+        renumber(g.id);
+      }
+    }
+  }
+}
+
+/* ---------- コピー ---------- */
+function openCopy(){
+  const opts=S.grades.filter(g=>g.id!==cur);if(!opts.length){alert('コピー元になるグレードがありません');return;}
+  $('#copyFrom').innerHTML=opts.map(g=>`<option value="${g.id}">${esc(g.name)}（${itemsOf(g.id).length}項目）</option>`).join('');
+  $('#copyOv').classList.add('show');
+}
+$('#copyCancel').onclick=()=>$('#copyOv').classList.remove('show');
+$('#copyDo').onclick=async()=>{
+  const src=itemsOf($('#copyFrom').value);let base=itemsOf(cur).length;if(!src.length){alert('コピー元に項目がありません');return;}
+  for(const it of src){const photos=[];for(const p of it.photos){const id=await copyPhoto(p);if(id)photos.push(id);}
+    S.items.push({...clone(it),id:uid(),gradeId:cur,order:++base,photos});}
+  await save();$('#copyOv').classList.remove('show');render();toast(`${src.length}項目をコピーしました`);
+};
+
+/* ---------- 見本（メゾネットの回り順） ---------- */
+// [エリア, 項目, 単位, 備考, 対象タイプ('PULL'=収納ベッドのある部屋), 対象グレードID（省略＝全グレード）]
+const TEMPLATE=[
+ ['上階：入口','入口ドア・ロック・ドアガード','','作動確認'],
+ ['上階：入口','照明スイッチ・カードキー差込口','','全灯点灯・球切れなし'],
+ ['上階：入口','入口床・巾木','','髪の毛・砂・ほこりなし（冬は雪解け水の跡も）'],
+ ['上階：入口','スリッパ','足','定員分を揃えて配置'],
+ ['上階：ベッドルーム','ヘブンリーベッド ベッドメイク','台','シワ・たるみなし、規定の仕上げ'],
+ ['上階：ベッドルーム','枕・クッション・ベッドスロー','','規定数・規定の配置'],
+ ['上階：ベッドルーム','ベッド下・ベッドサイド','','ゴミ・忘れ物なし'],
+ ['上階：ベッドルーム','ナイトテーブル・照明・時計','','拭き上げ・時刻合わせ'],
+ ['上階：ベッドルーム','カーテン・窓','','規定の開き具合、窓に汚れなし'],
+ ['上階：クローゼット','ハンガー','本','規定本数・向きを揃える'],
+ ['上階：クローゼット','ナイトウェア','枚','定員分・サイズ確認'],
+ ['上階：クローゼット','セーフティボックス','','扉は開いた状態・中に忘れ物なし'],
+ ['階段','階段・手すり','','ほこり・指紋なし、ぐらつきなし'],
+ ['階段','階段照明','','点灯確認'],
+ ['3層目：階段','上階への階段・手すり','','ほこり・指紋なし、ぐらつきなし',['p4a','p5','p7','pk'],'g23'],
+ ['3層目：寝室','3層目 ベッドメイク','台','シワ・たるみなし、規定の仕上げ（キングはキングベッド）',['p4a','p5','p7','pk'],'g23'],
+ ['3層目：寝室','3層目 ベッド下・窓・カーテン','','ゴミ・忘れ物なし、規定の開き具合',['p4a','p5','p7','pk'],'g23'],
+ ['3層目：別室','別室（寝室とは別の部屋）','','床・家具の拭き上げ、忘れ物なし',['p7'],'g23'],
+ ['3層目：別室','別室のトイレ','','便器内・便座裏・床、ペーパー三角折り・予備',['p7'],'g23'],
+ ['3層目：洗面','3層目 洗面ボウル・鏡','','髪の毛・水垢・くもりなし（7ベッドは寝室側）',['p4a','p5','p7','pk'],'g23'],
+ ['3層目：洗面','3層目 アメニティ・タオル','セット','規定数・規定の配置',['p4a','p5','p7','pk'],'g23'],
+ ['3層目：バス・シャワー','3層目 シャワー','','髪の毛・水垢・カビなし、排水口',['p5'],'g23'],
+ ['3層目：バス・シャワー','3層目 浴室（寝室側）','','バスタブ・シャワー・排水口',['p7'],'g23'],
+ ['3層目：トイレ','3層目 トイレ','','便器内・便座裏・床、ペーパー三角折り・予備',['p4a','p5','pk'],'g23'],
+ ['下階：リビング','ソファ・クッション','','隙間に忘れ物なし、規定の配置'],
+ ['下階：リビング','テーブル・カウンター','','拭き跡・指紋なし'],
+ ['下階：リビング','グラス・カップ類','個','定員分・汚れなし'],
+ ['下階：リビング','テレビ・リモコン','','電源OFF・リモコン定位置'],
+ ['下階：リビング','空調・暖房','','設定温度・リモコン定位置'],
+ ['下階：リビング','ゴミ箱','','空・袋セット済み'],
+ ['下階：収納ベッド','プルダウンベッド（収納時）','台','ロック確実・扉に汚れなし','PULL'],
+ ['下階：収納ベッド','プルダウンベッド（使用時）','台','予約人数で展開するか確認。シーツ・枕のセット','PULL'],
+ ['下階：洗面','洗面ボウル・排水口','','髪の毛・水垢なし'],
+ ['下階：洗面','2つ目の洗面ボウル（ダブル洗面）','','両方とも髪の毛・水垢なし','','gl'],
+ ['下階：洗面','鏡','','水跡・くもりなし'],
+ ['下階：洗面','アメニティ','セット','定員分・規定の配置'],
+ ['下階：洗面','タオル類（バス・フェイス・ハンド）','枚','定員分・汚れなし'],
+ ['下階：洗面','ドライヤー','','動作確認・コードをまとめる'],
+ ['下階：バスルーム','バスタブ・シャワー','','髪の毛・水垢・カビなし'],
+ ['下階：バスルーム','排水口','','髪の毛・詰まりなし'],
+ ['下階：バスルーム','バスマット','枚','セット済み'],
+ ['下階：トイレ','便器内・便座裏','','汚れ・水垢なし'],
+ ['下階：トイレ','トイレットペーパー','','三角折り・予備ロールあり'],
+ ['下階：トイレ','床・便器周り','','髪の毛・汚れなし'],
+ ['最終確認','室内の臭い','','こもり・異臭なし'],
+ ['最終確認','照明・空調の最終状態','','規定の状態に戻す'],
+];
+function addTemplateTo(gid){
+  let base=itemsOf(gid).length,n=0;
+  const gt=typesForGrade(gid),pullTypes=gt.filter(t=>t.pull>0),is23=gid==='g23',AL=areasOf(gid);
+  let rows=TEMPLATE.map(r=>is23?[area23(r[0]),text23(r[1]),...r.slice(2)]:r);
+  if(is23)rows=rows.map((r,i)=>[r,i]).sort((a,b)=>((AL.indexOf(a[0][0])+999)%999-(AL.indexOf(b[0][0])+999)%999)||a[1]-b[1]).map(x=>x[0]);
+  for(const [area,text,unit,note,tsp,gsp] of rows){
+    if(gsp&&gsp!==gid)continue;
+    let types=[],sets='',setsBy=null;
+    if(tsp==='PULL'){if(!pullTypes.length)continue;types=pullTypes.map(t=>t.id);setsBy=Object.fromEntries(pullTypes.map(t=>[t.id,t.pull]));}
+    else if(Array.isArray(tsp)){types=tsp.filter(id=>gt.some(t=>t.id===id));if(!types.length)continue;}
+    if(!AL.includes(area))AL.push(area);
+    S.items.push({id:uid(),gradeId:gid,order:++base,area,text,types,sets,setsBy,unit,note,photos:[]});n++;
+  }
+  return n;
+}
+async function loadTemplate(gid){const n=addTemplateTo(gid);await save();render();toast(`見本${n}項目を入れました`);}
+async function loadTemplateAll(){
+  const empty=S.grades.filter(g=>!itemsOf(g.id).length);
+  if(!empty.length){alert('項目が空のグレードはありません');return;}
+  if(!confirm(`見本を次のグレードに入れます：\n${empty.map(g=>g.name).join('、')}`))return;
+  for(const g of empty)addTemplateTo(g.id);await save();render();toast(`${empty.length}グレードに見本を入れました`);
+}
+
+/* ---------- 起動 ---------- */
+(async()=>{
+  try{db=await openDB();}catch(err){mem={kv:new Map(),photos:new Map()};$('#warn').style.display='block';}
+  try{
+    S=await dbGet('kv','data')||clone(DEFAULT);
+    const k=()=>JSON.stringify([S.v,S.has23,S.numFmt,S.a23]);const before=k();migrate();if(before!==k())await save();
+    let sc=null,sr=null;try{sc=localStorage.getItem('westin-cur');sr=localStorage.getItem('westin-room');}catch(_){}
+    cur=S.grades.some(g=>g.id===sc)?sc:S.grades[0].id;
+    try{const r=JSON.parse(sr||'null');if(r&&FLOORS.includes(r.f)&&gradeOf(r.f,r.n)===cur)room=r;}catch(_){}
+    render();
+    navigator.storage?.persist?.();
+  }catch(err){$('#list').innerHTML=`<div class="empty">データを開けませんでした：${esc(err.message)}</div>`;}
+  if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+</body>
+</html>
