@@ -200,13 +200,15 @@ textarea.in{min-height:70px;resize:vertical}
   <button data-act="tplAll">🏨 見本を全グレードに入れる（項目が空のグレードだけ）</button>
   <button data-act="clear" style="color:#C0392B">🗑 このグレードの項目をすべて削除</button>
   <div class="cap">データ（この端末の中だけに保存されています）</div>
-  <button data-act="backup">💾 バックアップを書き出す</button>
-  <button data-act="restore">📂 バックアップから読み込む</button>
+  <button data-act="backup">💾 バックアップ／共有ファイルを書き出す</button>
+  <button data-act="merge">🤝 相手のファイルと合体読み込み</button>
+  <button data-act="restore">📂 バックアップから読み込む（今のデータと置き換え）</button>
   <button data-act="help">❓ 使い方</button>
   <p class="hint" id="usage"></p>
-  <p class="hint">アプリのバージョン：2026-11-05</p>
+  <p class="hint">アプリのバージョン：2026-11-05c</p>
   <div class="foot"><span class="grow"></span><button class="btn" data-act="close">閉じる</button></div>
   <input type="file" id="restoreIn" accept=".json,application/json" hidden>
+  <input type="file" id="mergeIn" accept=".json,application/json" hidden>
 </div></div>
 
 <!-- 部屋選択 -->
@@ -263,6 +265,7 @@ textarea.in{min-height:70px;resize:vertical}
   <p><b>3. 部屋から開く</b><br>「🚪部屋番号から選ぶ」→ フロア → 部屋番号。その部屋のグレードとタイプに合う項目とセット数だけが表示されます。</p>
   <p><b>4. グレードの割り当てを直す</b><br>階ごとの標準はメニューの「設定」で、1部屋ずつの例外は部屋選択画面の「✏部屋ごとのグレードを変える」で変更できます。</p>
   <p><b>5. チェッカーに配る</b><br>「閲覧用ファイル」は写真入りの1ファイル。LINEやメールで送れば、ログインもネットもなしで開けます。紙なら「印刷・PDF保存」。</p>
+  <p><b>★ 2人で一緒に作る</b><br>「💾バックアップ／共有ファイルを書き出す」→ LINEなどで相手に送る → 相手は「🤝相手のファイルと合体読み込み」。お互いの追加・修正・削除が合わさります。同じ項目を2人とも直した場合は、後から直した方が残ります。部屋タイプなどで担当を分けると安心です。</p>
   <p><b>6. データの保存場所</b><br>データはこの端末の中だけに保存されます。別の端末へは「バックアップを書き出す」→「バックアップから読み込む」。</p>
   </div>
   <div class="foot"><span class="grow"></span><button class="btn pri" id="helpClose">閉じる</button></div>
@@ -312,7 +315,7 @@ const TYPE_COLORS=['#5B8DB8','#D9822B','#7A9E3E','#B5446E','#7B61B0','#3E9E96','
 const DEFAULT={v:3,numFmt:2,has23:1,grades:[...DEF_GRADES,DEF_G23],floorGrade:{...DEF_FG,23:'g23'},gradeOv:{},types:[...DEF_TYPES,...DEF_T23],rooms:DEF_ROOMS,floorRooms:{23:DEF_R23},areas:DEF_AREAS,gradeAreas:{g23:DEF_A23},a23:1,items:[]};
 
 let S,cur,room=null; // cur=表示中のグレードID, room={f,n}
-const save=()=>dbPut('kv','data',S);
+
 const typeColor=tid=>TYPE_COLORS[Math.max(0,S.types.findIndex(t=>t.id===tid))%TYPE_COLORS.length];
 const gIdx=gid=>Math.max(0,S.grades.findIndex(g=>g.id===gid));
 const gName=gid=>(S.grades.find(g=>g.id===gid)||{}).name||'未設定';
@@ -578,6 +581,7 @@ $('#menuOv').onclick=async e=>{
   if(a==='clear')clearGrade();
   if(a==='backup')backup();
   if(a==='restore')$('#restoreIn').click();
+  if(a==='merge')$('#mergeIn').click();
   if(a==='help')$('#helpOv').classList.add('show');
 };
 $('#helpClose').onclick=()=>$('#helpOv').classList.remove('show');
@@ -668,7 +672,7 @@ $('#restoreIn').onchange=async e=>{
     if(!confirm('今の端末のデータを、バックアップの内容で置き換えます。よろしいですか？'))return;
     await dbClear('photos');urls.clear();
     for(const [k,v] of Object.entries(j.photos||{})){await dbPut('photos',k,v);try{await dbPut('photos',k+':t',shrink(await loadImg(v),240,0.6));}catch(_){}}
-    S=j.data;migrate();cur=S.grades[0].id;room=null;persist();await save();render();toast('読み込みました');
+    S=j.data;SNAP=null;migrate();cur=S.grades[0].id;room=null;persist();await save();render();toast('読み込みました');
   }catch(err){alert('読み込めませんでした：'+err.message);}
 };
 
@@ -851,12 +855,71 @@ async function loadTemplateAll(){
   for(const g of empty)addTemplateTo(g.id);await save();render();toast(`${empty.length}グレードに見本を入れました`);
 }
 
+const APP_ID='westin-inspect';
+/* ---------- 2人で編集：変更日時の記録と合体読み込み ---------- */
+// 保存のたびに「前回保存時との違い」を調べ、変わった項目に更新日時(u)、消えた項目に削除記録(tomb)を付ける
+const CFG_KEYS=['grades','floorGrade','gradeOv','types','rooms','floorRooms','areas','gradeAreas'], UNION_KEYS=['grades','types'], GK='gradeId';
+let SNAP=null;
+const itemKey=it=>{const {u,...r}=it;return JSON.stringify(r);};
+const cfgKey=()=>JSON.stringify(CFG_KEYS.map(k=>S[k]));
+function snap(){const m=new Map();for(const it of S.items)m.set(it.id,itemKey(it));return {items:m,cfg:cfgKey()};}
+function stamp(){
+  if(!SNAP){SNAP=snap();return;}
+  const now=Date.now();S.tomb=S.tomb||{};const seen=new Set();
+  for(const it of S.items){seen.add(it.id);if(SNAP.items.get(it.id)!==itemKey(it))it.u=now;}
+  for(const id of SNAP.items.keys())if(!seen.has(id))S.tomb[id]=now;
+  const old=now-200*864e5;for(const [k,v] of Object.entries(S.tomb))if(v<old)delete S.tomb[k]; // 古い削除記録は整理
+  if(SNAP.cfg!==cfgKey())S.cfgU=now;
+  SNAP=snap();
+}
+const save=()=>{stamp();return dbPut('kv','data',S);};
+async function dbKeys(s){if(mem)return [...mem[s].keys()];return rq(db.transaction(s).objectStore(s).getAllKeys());}
+async function mergeData(j){
+  // 相手のデータも同じ形にそろえる（古い版のファイルでもOK）
+  const mine=S;S=JSON.parse(JSON.stringify(j.data));try{migrate();}finally{var B=S;S=mine;}
+  const A=S,tomb={...(A.tomb||{})};
+  for(const [k,v] of Object.entries(B.tomb||{}))tomb[k]=Math.max(tomb[k]||0,v);
+  const map=new Map(A.items.map(it=>[it.id,it])),had=new Set(map.keys());let add=0,upd=0,del=0;
+  for(const it of B.items||[]){const a=map.get(it.id);
+    if(!a){if(!(tomb[it.id]>=(it.u||0))){map.set(it.id,it);add++;}}
+    else if((it.u||0)>(a.u||0)){map.set(it.id,it);upd++;}}
+  for(const [id,it] of map)if(tomb[id]&&tomb[id]>=(it.u||0)){map.delete(id);if(had.has(id))del++;}
+  // 設定（部屋タイプ名・エリアなど）は、後から変えた方を採用。どちらかにしかない部屋タイプ等は両方残す
+  const keepA={};for(const k of UNION_KEYS)keepA[k]=JSON.parse(JSON.stringify(A[k]||[]));
+  let cfg=false;
+  if((B.cfgU||0)>(A.cfgU||0)){for(const k of CFG_KEYS)if(B[k]!==undefined)A[k]=B[k];A.cfgU=B.cfgU;cfg=true;}
+  for(const k of UNION_KEYS){const other=cfg?keepA[k]:(B[k]||[]);const ids=new Set((A[k]||[]).map(x=>x.id));for(const x of other)if(!ids.has(x.id)){A[k].push(x);ids.add(x.id);}}
+  A.items=[...map.values()];A.tomb=tomb;
+  // 写真：必要なものを取り込み、どの項目からも使われなくなった写真は片付け
+  const need=new Set();for(const it of A.items)for(const ph of it.photos||[])need.add(ph);
+  for(const ph of need){if(await dbGet('photos',ph))continue;const v=j.photos&&j.photos[ph];if(!v)continue;
+    await dbPut('photos',ph,v);try{await dbPut('photos',ph+':t',shrink(await loadImg(v),240,0.6));}catch(_){}}
+  for(const k of await dbKeys('photos')){const base=String(k).replace(/:t$/,'');if(!need.has(base)){await dbDel('photos',k);urls.delete(k);}}
+  // 並び順を整える
+  for(const g of S.grades)A.items.filter(x=>x[GK]===g.id).sort((a,b)=>(a.order-b.order)||((a.u||0)-(b.u||0))).forEach((x,i)=>x.order=i+1);
+  migrate();
+  SNAP=null;await save();
+  return {add,upd,del,cfg};
+}
+$('#mergeIn').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{
+    const j=JSON.parse(await f.text());
+    if(j.app!==APP_ID||!j.data)throw new Error('このアプリのファイルではありません');
+    if(!confirm('相手のデータと合体します。\n・相手が追加した項目 → 追加\n・同じ項目 → 後から直した方を残す\n・相手が削除した項目 → 削除\nよろしいですか？'))return;
+    toast('合体中…');
+    const r=await mergeData(j);if(!S.grades.some(g=>g.id===cur))cur=S.grades[0].id;room=null;persist(); render();
+    alert(`合体しました。\n追加：${r.add}項目　更新：${r.upd}項目　削除：${r.del}項目${r.cfg?'\n部屋タイプ・エリアなどの設定も相手の新しい内容にそろえました。':''}`);
+  }catch(err){alert('合体できませんでした：'+err.message);}
+};
+
 /* ---------- 起動 ---------- */
 (async()=>{
   try{db=await openDB();}catch(err){mem={kv:new Map(),photos:new Map()};$('#warn').style.display='block';}
   try{
     S=await dbGet('kv','data')||clone(DEFAULT);
     const k=()=>JSON.stringify([S.v,S.has23,S.numFmt,S.a23]);const before=k();migrate();if(before!==k())await save();
+    if(!SNAP)SNAP=snap();
     let sc=null,sr=null;try{sc=localStorage.getItem('westin-cur');sr=localStorage.getItem('westin-room');}catch(_){}
     cur=S.grades.some(g=>g.id===sc)?sc:S.grades[0].id;
     try{const r=JSON.parse(sr||'null');if(r&&FLOORS.includes(r.f)&&gradeOf(r.f,r.n)===cur)room=r;}catch(_){}
