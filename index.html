@@ -68,6 +68,10 @@ textarea.in{min-height:70px;resize:vertical}
 .ph .busy{width:90px;height:90px;border-radius:8px;border:1px dashed #9AA8B8;background:#EEF2F7;color:#5B6B7F;font-size:12px;display:flex;align-items:center;justify-content:center;animation:pl 1s ease-in-out infinite alternate}
 @keyframes pl{from{opacity:.5}to{opacity:1}}
 .btn:disabled{opacity:.6}
+.ph .mv{display:flex;justify-content:space-between;gap:4px;margin-top:4px}
+.ph .mv button{flex:1;height:30px;border:1px solid var(--line);background:#fff;border-radius:6px;font-size:13px;padding:0}
+.ph .mv button:disabled{opacity:.25}
+.ph .no{position:absolute;left:4px;top:4px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;border-radius:4px;padding:0 5px}
 .ph .x{position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;border:0;background:var(--red);color:#fff;font-size:13px;line-height:24px;padding:0}
 .phbtns{display:flex;gap:8px;margin-top:8px}
 .btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px 14px;font-size:15px}
@@ -208,7 +212,7 @@ textarea.in{min-height:70px;resize:vertical}
   <button data-act="restore">📂 バックアップから読み込む（今のデータと置き換え）</button>
   <button data-act="help">❓ 使い方</button>
   <p class="hint" id="usage"></p>
-  <p class="hint">アプリのバージョン：2026-11-06</p>
+  <p class="hint">アプリのバージョン：2026-11-06b</p>
   <div class="foot"><span class="grow"></span><button class="btn" data-act="close">閉じる</button></div>
   <input type="file" id="restoreIn" hidden>
   <input type="file" id="mergeIn" hidden>
@@ -510,10 +514,14 @@ $('#fSetMode').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;if(
   if(E.mode==='by'&&$('#fSets').value!==''){for(const t of typesForGrade(cur))if(E.setsBy[t.id]==null||E.setsBy[t.id]==='')E.setsBy[t.id]=Number($('#fSets').value);}
   setByRows();};
 async function photoRow(busy=0){
-  $('#fPhotos').innerHTML=E.photos.map(p=>`<div class="p"><img data-p="${p}" alt=""><button type="button" class="x" data-rm="${p}">✕</button></div>`).join('')+Array.from({length:busy},()=>`<div class="busy">処理中…</div>`).join('');
+  const n=E.photos.length;
+  $('#fPhotos').innerHTML=E.photos.map((p,i)=>`<div class="p"><img data-p="${p}" alt=""><span class="no">${i+1}</span><button type="button" class="x" data-rm="${p}">✕</button>${n>1?`<div class="mv"><button type="button" data-ml="${i}" ${i===0?'disabled':''} aria-label="左へ">◀</button><button type="button" data-mr="${i}" ${i===n-1?'disabled':''} aria-label="右へ">▶</button></div>`:''}</div>`).join('')+Array.from({length:busy},()=>`<div class="busy">処理中…</div>`).join('');
   for(const img of $('#fPhotos').querySelectorAll('img'))img.src=await photoURL(img.dataset.p,true);
 }
-$('#fPhotos').onclick=e=>{const b=e.target.closest('[data-rm]');if(!b)return;const id=b.dataset.rm;E.photos=E.photos.filter(x=>x!==id);E.removed.push(id);photoRow();};
+$('#fPhotos').onclick=e=>{
+  const mv=e.target.closest('[data-ml],[data-mr]');
+  if(mv){const i=+(mv.dataset.ml??mv.dataset.mr),j=mv.dataset.ml!=null?i-1:i+1;if(j<0||j>=E.photos.length)return;[E.photos[i],E.photos[j]]=[E.photos[j],E.photos[i]];photoRow();return;}
+  const b=e.target.closest('[data-rm]');if(!b)return;const id=b.dataset.rm;E.photos=E.photos.filter(x=>x!==id);E.removed.push(id);photoRow();};
 function openEdit(id){
   const list=itemsOf(cur),shown=list.filter(visible),it=id?S.items.find(x=>x.id===id):null,last=shown[shown.length-1];
   E={id,area:it?it.area:(last?last.area:areasOf(cur)[0]),types:it?[...(it.types||[])]:[],mode:it&&it.setsBy?'by':'one',setsBy:it&&it.setsBy?{...it.setsBy}:{},photos:it?[...it.photos]:[],added:[],removed:[]};
