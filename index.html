@@ -238,7 +238,7 @@ textarea.in{min-height:70px;resize:vertical}
   <button data-act="restore">📂 バックアップから読み込む（今のデータと置き換え）</button>
   <button data-act="help">❓ 使い方</button>
   <p class="hint" id="usage"></p>
-  <p class="hint">アプリのバージョン：2026-11-06j</p>
+  <p class="hint">アプリのバージョン：2026-11-06k</p>
   <div class="foot"><span class="grow"></span><button class="btn" data-act="close">閉じる</button></div>
   <input type="file" id="restoreIn" hidden>
   <input type="file" id="mergeIn" hidden>
@@ -355,7 +355,7 @@ const DEF_FG={3:'gs',5:'gs',7:'gs',9:'gs',11:'ge',13:'ge',15:'ge',17:'gl',19:'gl
 const DEF_G23={id:'g23',name:'23F'};
 const DEF_T23=[{id:'p2',name:'23F 2ベッド（2層）',pull:0},{id:'p4a',name:'23F 4ベッド（3層）',pull:0},{id:'p4ak',name:'23F 4ベッド（3層・上階キング）',pull:0},{id:'p4b',name:'23F 4ベッド（2層）',pull:0},{id:'p5',name:'23F 5ベッド（3層）',pull:0},{id:'p7',name:'23F 7ベッド（3層）',pull:0},{id:'p7k',name:'23F 7ベッド（3層・下階キング）',pull:0},{id:'pk',name:'23F キング（3層）',pull:0}];
 const DEF_R23={1:'p2',2:'p4a',3:'p7',4:'pk',5:'p5',6:'p4a',7:'p4b',8:'p4b',9:'p4a',10:'p7k',11:'pk',12:'p5',13:'p4ak',14:'p4b',15:'p4b',16:'p4a',17:'p7',18:'pk',19:'p5',20:'p4a',21:'p2'};
-const DEF_A23=['中階：入口','中階：ベッドルーム','中階：クローゼット','階段（中階⇄上階）','上階：寝室','上階：別室','上階：洗面','上階：バス・シャワー','上階：トイレ','階段（中階⇄下階）','下階：リビング','下階：収納ベッド','下階：洗面','下階：バスルーム','下階：トイレ','最終確認'];
+const DEF_A23=['中階：入口','中階：ベッドルーム','中階：クローゼット','階段（中階⇄上階）','上階：寝室','上階：別室','上階：洗面','上階：バス・シャワー','上階：トイレ','階段（中階⇄下階）','下階：リビング','下階：収納ベッド','下階：寝室','下階：洗面','下階：バスルーム','下階：トイレ','最終確認'];
 // 通常階の見本 → 23F用に読み替え（通常の上階＝23Fの中階、3層目＝23Fの上階）
 function area23(a){if(a.startsWith('3層目：階段'))return '階段（中階⇄上階）';if(a.startsWith('3層目：'))return '上階：'+a.slice(4);if(a.startsWith('上階：'))return '中階：'+a.slice(3);if(a==='階段')return '階段（中階⇄下階）';return a;}
 const text23=t=>t.replace(/3層目/g,'上階');
@@ -395,7 +395,7 @@ function setsText(it,tid){ // tid指定時はその部屋タイプの数
   return (it.sets===''||it.sets==null)?'':`${esc(it.sets)}${u}`;
 }
 function migrate(){
-  if(S.v===3){fixNumFmt();add23();fixAreas23();applyMaster();addP7K();addP4AK();addLowerBed();return;}
+  if(S.v===3){fixNumFmt();add23();fixAreas23();applyMaster();addP7K();addP4AK();addLowerBed();addLowerBed23();return;}
   const typesOk=Array.isArray(S.types)&&S.types.some(t=>t.pull!=null);
   const oldItems=(S.items||[]).filter(it=>typesOk&&S.types.some(t=>t.id===it.typeId));
   if(!typesOk)S.types=clone(DEF_TYPES);
@@ -403,7 +403,7 @@ function migrate(){
   S.grades=clone(DEF_GRADES);S.floorGrade=clone(DEF_FG);S.gradeOv={};
   S.areas=S.areas&&S.areas.length?S.areas:clone(DEF_AREAS);
   S.items=oldItems.map(it=>{const n={...it,gradeId:it.scope==='lux'?'gl':'gs',types:[it.typeId],setsBy:null};delete n.typeId;delete n.scope;return n;});
-  delete S.luxFrom;S.v=3;S.numFmt=3;add23();fixAreas23();applyMaster();addP7K();addP4AK();addLowerBed();
+  delete S.luxFrom;S.v=3;S.numFmt=3;add23();fixAreas23();applyMaster();addP7K();addP4AK();addLowerBed();addLowerBed23();
   for(const g of S.grades)renumber(g.id);
 }
 
@@ -446,11 +446,29 @@ function addP7K(){ // 2310：7ベッド（3層）のうち下階がキングの�
   for(const it of S.items){if(it.types&&it.types.includes('p7')&&!it.types.includes('p7k'))it.types.push('p7k');if(it.setsBy&&it.setsBy.p7!=null&&it.setsBy.p7k==null)it.setsBy.p7k=it.setsBy.p7;}
   S.p7k=1;
 }
+function addLowerBed23(){ // 23Fの7ベッド（2303・2310・2317）は下階にも寝室がある
+  if(S.lowerBed23)return;
+  const A='下階：寝室',AL=S.gradeAreas&&S.gradeAreas.g23;
+  if(AL){
+    if(!AL.includes(A)){const i=AL.indexOf('下階：収納ベッド'),j=AL.indexOf('下階：リビング');AL.splice(i>=0?i+1:(j>=0?j+1:AL.length),0,A);}
+    const list=itemsOf('g23');
+    if(list.length&&!list.some(it=>it.area===A&&it.text!=='下階 キングベッド ベッドメイク')){
+      const king=list.find(it=>it.text==='下階 キングベッド ベッドメイク');
+      if(king){list.splice(list.indexOf(king),1);king.area=A;}
+      const ai=AL.indexOf(A);let at=list.findIndex(x=>AL.indexOf(x.area)>ai);if(at<0)at=list.length;
+      const rows=TEMPLATE.filter(r=>r[0]===A&&r[5]==='g23'&&r[1]!=='下階 キングベッド ベッドメイク');
+      const add=rows.map(([area,text,unit,note,tsp])=>({id:uid(),gradeId:'g23',area,text,types:[...tsp],sets:'',setsBy:null,unit,note,photos:[]}));
+      if(king)add.splice(1,0,king);
+      S.items.push(...add.filter(x=>x!==king));list.splice(at,0,...add);list.forEach((x,i)=>x.order=i+1);
+    }
+  }
+  S.lowerBed23=1;
+}
 function addLowerBed(){ // ファイブ（FI）は下階にも寝室がある：エリアと確認項目を追加（1回だけ）
   if(S.lowerBed)return;
   const A='下階：寝室';
   if(!S.areas.includes(A)){const i=S.areas.indexOf('下階：収納ベッド'),j=S.areas.indexOf('下階：リビング');S.areas.splice(i>=0?i+1:(j>=0?j+1:S.areas.length),0,A);}
-  const rows=TEMPLATE.filter(r=>r[0]===A);
+  const rows=TEMPLATE.filter(r=>r[0]===A&&!r[5]);
   for(const g of S.grades){
     if(areasOf(g.id)!==S.areas)continue; // 23Fなど専用エリアのグレードは対象外
     const types=rows[0][4].filter(id=>typesForGrade(g.id).some(t=>t.id===id));
@@ -1012,7 +1030,11 @@ const TEMPLATE=[
  ['階段','階段・手すり','','ほこり・指紋なし、ぐらつきなし'],
  ['階段','階段照明','','点灯確認'],
  ['3層目：階段','上階への階段・手すり','','ほこり・指紋なし、ぐらつきなし',['p4a','p4ak','p5','p7','p7k','pk'],'g23'],
- ['下階：リビング','下階 キングベッド ベッドメイク','台','シワ・たるみなし、規定の仕上げ',['p7k'],'g23'],
+ ['下階：寝室','下階寝室 ベッドメイク','台','シワ・たるみなし、規定の仕上げ',['p7'],'g23'],
+ ['下階：寝室','下階 キングベッド ベッドメイク','台','シワ・たるみなし、規定の仕上げ',['p7k'],'g23'],
+ ['下階：寝室','下階寝室 ベッド下・ベッドサイド','','ゴミ・忘れ物なし',['p7','p7k'],'g23'],
+ ['下階：寝室','下階寝室 ナイトテーブル・照明','','拭き上げ・点灯確認',['p7','p7k'],'g23'],
+ ['下階：寝室','下階寝室 窓・カーテン','','規定の開き具合、窓に汚れなし',['p7','p7k'],'g23'],
  ['3層目：寝室','3層目 ベッドメイク','台','シワ・たるみなし、規定の仕上げ（キングはキングベッド）',['p4a','p4ak','p5','p7','p7k','pk'],'g23'],
  ['3層目：寝室','3層目 ベッド下・窓・カーテン','','ゴミ・忘れ物なし、規定の開き具合',['p4a','p4ak','p5','p7','p7k','pk'],'g23'],
  ['3層目：別室','別室（寝室とは別の部屋）','','床・家具の拭き上げ、忘れ物なし',['p7','p7k'],'g23'],
@@ -1135,7 +1157,7 @@ $('#mergeIn').onchange=async e=>{
   try{db=await openDB();}catch(err){mem={kv:new Map(),photos:new Map()};$('#warn').style.display='block';}
   try{
     S=await dbGet('kv','data')||clone(DEFAULT);
-    const k=()=>JSON.stringify([S.v,S.has23,S.numFmt,S.a23,S.master1,S.gradeOv,S.p7k,S.p4ak,S.lowerBed]);const before=k();migrate();if(before!==k())await save();
+    const k=()=>JSON.stringify([S.v,S.has23,S.numFmt,S.a23,S.master1,S.gradeOv,S.p7k,S.p4ak,S.lowerBed,S.lowerBed23]);const before=k();migrate();if(before!==k())await save();
     if(!SNAP)SNAP=snap();
     let sc=null,sr=null;try{sc=localStorage.getItem('westin-cur');sr=localStorage.getItem('westin-room');}catch(_){}
     cur=S.grades.some(g=>g.id===sc)?sc:S.grades[0].id;
