@@ -238,7 +238,7 @@ textarea.in{min-height:70px;resize:vertical}
   <button data-act="restore">📂 バックアップから読み込む（今のデータと置き換え）</button>
   <button data-act="help">❓ 使い方</button>
   <p class="hint" id="usage"></p>
-  <p class="hint">アプリのバージョン：2026-11-06k</p>
+  <p class="hint">アプリのバージョン：2026-11-06l</p>
   <div class="foot"><span class="grow"></span><button class="btn" data-act="close">閉じる</button></div>
   <input type="file" id="restoreIn" hidden>
   <input type="file" id="mergeIn" hidden>
@@ -315,7 +315,7 @@ textarea.in{min-height:70px;resize:vertical}
 <div id="viewer"><div id="vTrack"></div><div id="vCount"></div><div id="vDots"></div><button id="vClose" aria-label="閉じる">✕</button><button class="vNav" id="vPrev" aria-label="前の写真">‹</button><button class="vNav" id="vNext" aria-label="次の写真">›</button></div>
 <div class="ov" id="dlvOv"><div class="sheet">
   <h2>ファイルができました</h2>
-  <p class="hint" id="dlvName" style="word-break:break-all"></p>
+  <p class="hint" id="dlvName" style="word-break:break-all;white-space:pre-line"></p>
   <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
     <button class="btn pri" id="dlvShare">📤 LINE・メールなどで送る</button>
     <button class="btn" id="dlvSave">⬇ この端末に保存する</button>
@@ -806,7 +806,7 @@ async function clearGrade(){
 
 /* ---------- 書き出し ---------- */
 // 書き出したファイルを渡す：ボタンを押してもらってから共有／保存（Androidで失敗しないように）
-let DLV=null;
+let DLV=null,DLV_NOTE='';
 async function deliver(blob,name){
   const mobile=matchMedia('(pointer:coarse)').matches;
   if(!mobile){saveFile(blob,name);return;}
@@ -815,7 +815,7 @@ async function deliver(blob,name){
   const file=new File([blob],name,{type:shareType});
   const canShare=!!(navigator.canShare&&navigator.canShare({files:[file]}));
   DLV={blob,name,file};
-  $('#dlvName').textContent=name;
+  $('#dlvName').textContent=name+(DLV_NOTE?'\n'+DLV_NOTE:'');DLV_NOTE='';
   $('#dlvShare').style.display=canShare?'':'none';
   $('#dlvOv').classList.add('show');
 }
@@ -889,11 +889,32 @@ h1{font-size:20px;margin:0 0 4px;color:${C}}.d{font-size:12px;color:#777;margin-
 }
 
 /* ---------- バックアップ ---------- */
+// バックアップ：同じ写真は1つにまとめ、大きすぎるときは写真を軽くして書き出す
+const SEND_LIMIT=30*1048576; // LINE・メールの上限（約34MB）より少し小さく
+async function shrinkData(u,max,q){try{return shrink(await loadImg(u),max,q);}catch(_){return u;}}
 async function backup(){
-  toast('書き出し中…');const photos={};
-  for(const it of S.items)for(const p of it.photos){const u=await photoURL(p);if(u)photos[p]=u;}
-  await deliver(new Blob([JSON.stringify({app:'westin-inspect',version:3,data:S,photos})],{type:'application/json'}),`ウェスティン点検_バックアップ_${today()}.json`);
+  toast('書き出し中…');
+  const refs={},data={},seen=new Map();let k=0;
+  for(const it of S.items)for(const p of it.photos){
+    if(refs[p])continue;const u=await photoURL(p);if(!u)continue;
+    if(!seen.has(u)){const key='p'+(k++);seen.set(u,key);data[key]=u;}
+    refs[p]=seen.get(u);
+  }
+  const size=()=>Object.values(data).reduce((a,v)=>a+v.length,0)+JSON.stringify(S).length;
+  let note='';
+  for(const [max,q] of [[900,0.62],[720,0.55],[560,0.5]]){
+    if(size()<=SEND_LIMIT)break;
+    toast('写真を軽くしています…');
+    for(const key of Object.keys(data))data[key]=await shrinkData(data[key],max,q);
+    note=`写真を軽くして書き出しました（長辺${max}px）`;
+  }
+  const blob=new Blob([JSON.stringify({app:'westin-inspect',version:3,data:S,photos:{},photoRefs:refs,photoData:data})],{type:'application/json'});
+  const mb=(blob.size/1048576).toFixed(1);
+  DLV_NOTE=`サイズ：約${mb}MB（写真${Object.keys(data).length}枚）${note?'\n'+note:''}${blob.size>34*1048576?'\n⚠ まだ大きいため、LINEでは送れない場合があります。「この端末に保存」→ GoogleドライブやAirDropで渡してください。':''}`;
+  await deliver(blob,`ウェスティン点検_バックアップ_${today()}.json`);
 }
+const photoOf=(j,id)=>(j.photos&&j.photos[id])||(j.photoData&&j.photoRefs&&j.photoData[j.photoRefs[id]])||'';
+const photoIds=j=>[...Object.keys(j.photos||{}),...Object.keys(j.photoRefs||{})];
 $('#restoreIn').onchange=async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
   try{
@@ -901,7 +922,7 @@ $('#restoreIn').onchange=async e=>{
     if(j.app!=='westin-inspect'||!j.data)throw new Error('このアプリのバックアップではありません');
     if(!confirm('今の端末のデータを、バックアップの内容で置き換えます。よろしいですか？'))return;
     await dbClear('photos');urls.clear();
-    for(const [k,v] of Object.entries(j.photos||{})){await dbPut('photos',k,v);try{await dbPut('photos',k+':t',shrink(await loadImg(v),240,0.6));}catch(_){}}
+    for(const k of photoIds(j)){const v=photoOf(j,k);if(!v)continue;await dbPut('photos',k,v);try{await dbPut('photos',k+':t',shrink(await loadImg(v),240,0.6));}catch(_){}}
     S=j.data;SNAP=null;migrate();cur=S.grades[0].id;room=null;persist();await save();render();toast('読み込みました');
   }catch(err){alert('読み込めませんでした：'+err.message);}
 };
@@ -1131,7 +1152,7 @@ async function mergeData(j){
   A.items=[...map.values()];A.tomb=tomb;
   // 写真：必要なものを取り込み、どの項目からも使われなくなった写真は片付け
   const need=new Set();for(const it of A.items)for(const ph of it.photos||[])need.add(ph);
-  for(const ph of need){if(await dbGet('photos',ph))continue;const v=j.photos&&j.photos[ph];if(!v)continue;
+  for(const ph of need){if(await dbGet('photos',ph))continue;const v=photoOf(j,ph);if(!v)continue;
     await dbPut('photos',ph,v);try{await dbPut('photos',ph+':t',shrink(await loadImg(v),240,0.6));}catch(_){}}
   for(const k of await dbKeys('photos')){const base=String(k).replace(/:t$/,'');if(!need.has(base)){await dbDel('photos',k);urls.delete(k);}}
   // 並び順を整える
