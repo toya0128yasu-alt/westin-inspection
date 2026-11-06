@@ -212,7 +212,7 @@ textarea.in{min-height:70px;resize:vertical}
   <button data-act="restore">📂 バックアップから読み込む（今のデータと置き換え）</button>
   <button data-act="help">❓ 使い方</button>
   <p class="hint" id="usage"></p>
-  <p class="hint">アプリのバージョン：2026-11-06b</p>
+  <p class="hint">アプリのバージョン：2026-11-06c</p>
   <div class="foot"><span class="grow"></span><button class="btn" data-act="close">閉じる</button></div>
   <input type="file" id="restoreIn" hidden>
   <input type="file" id="mergeIn" hidden>
@@ -359,7 +359,7 @@ function setsText(it,tid){ // tid指定時はその部屋タイプの数
   return (it.sets===''||it.sets==null)?'':`${esc(it.sets)}${u}`;
 }
 function migrate(){
-  if(S.v===3){fixNumFmt();add23();fixAreas23();return;}
+  if(S.v===3){fixNumFmt();add23();fixAreas23();applyMaster();return;}
   const typesOk=Array.isArray(S.types)&&S.types.some(t=>t.pull!=null);
   const oldItems=(S.items||[]).filter(it=>typesOk&&S.types.some(t=>t.id===it.typeId));
   if(!typesOk)S.types=clone(DEF_TYPES);
@@ -367,10 +367,42 @@ function migrate(){
   S.grades=clone(DEF_GRADES);S.floorGrade=clone(DEF_FG);S.gradeOv={};
   S.areas=S.areas&&S.areas.length?S.areas:clone(DEF_AREAS);
   S.items=oldItems.map(it=>{const n={...it,gradeId:it.scope==='lux'?'gl':'gs',types:[it.typeId],setsBy:null};delete n.typeId;delete n.scope;return n;});
-  delete S.luxFrom;S.v=3;S.numFmt=2;add23();fixAreas23();
+  delete S.luxFrom;S.v=3;S.numFmt=2;add23();fixAreas23();applyMaster();
   for(const g of S.grades)renumber(g.id);
 }
 
+// 部屋マスター：予約状況表（2026/11/3）の各部屋コード。先頭2文字＝グレード、後ろ2文字＝タイプ
+const MASTER={
+ 3:'SDTW SDTW SDFI SDTW SDTH SDTW SDFO SDTW SDTW SDFI SDTW SDTH SDTW SDFO SDFO SDTW SDFI SDTW SDTH SDTW SDTW',
+ 5:'SDTW SDTW SDFI SDTW SDTH SDTW SDFO SDTW SDTW SDFI SDTW SDTH SDTW SDFO SDFO SDTW SDFI SDTW SDTH SDTW SDTW',
+ 7:'SDTW SDTW SDFI SDTW SDTH SDTW SDFO SDTW SDTW SDFI SDTW SDTH SDTW SDFO SDFO SDTW SDFI SDTW SDTH SDTW SDTW',
+ 9:'SDTW SDTW SDFI SDKI SDTH SDTW SDFO SDTW SDTW SDFI SDTW SDTH SDTW SDFO SDFO SDTW SDFI SDKI SDTH SDTW SDTW',
+ 11:'EXTW EXTW LXFI EXKI LXTH EXTW EXFO EXTW EXTW LXFI EXTW LXTH EXTW EXFO EXFO EXTW LXFI EXKI LXTH EXTW EXTW',
+ 13:'EXTW EXTW LXFI EXKI LXTH EXTW EXTW EXTW EXTW LXFI EXTW LXTH EXTW EXTW EXTW EXTW LXFI EXKI LXTH EXTW EXTW',
+ 15:'EXTW EXTW LXFI EXKI LXTH EXTW EXFO EXTW EXTW LXFI EXTW LXTH EXTW EXFO EXFO EXTW LXFI EXKI LXTH EXTW EXTW',
+ 17:'LXTW EXTW LXFI LXKI LXTH EXTW LXFO LXKI EXTW LXFI LXKI LXTH EXTW LXFO LXFO EXTW LXFI LXKI LXTH EXTW LXTW',
+ 19:'LXTW EXTW LXFI LXKI LXTH EXTW LXFO LXKI EXTW LXFI LXKI LXTH EXTW LXFO LXFO EXTW LXFI LXKI LXTH EXTW LXTW',
+ 21:'LXTW EXTW LXFI LXKI LXTH EXTW LXFO LXKI EXTW LXFI LXKI LXTH EXTW LXFO LXFO EXTW LXFI LXKI LXTH EXTW LXTW',
+};
+const G_CODE={SD:'gs',EX:'ge',LX:'gl'}, T_CODE={TW:'b2',TH:'b3',FO:'b4',FI:'b5',KI:'bk'};
+const G_DEF={gs:['SD','スタンダード'],ge:['EX','エグゼクティブ'],gl:['LX','ラグジュアリー']};
+const T_DEF={b2:['TW','ツイン（2ベッド）',2],b3:['TH','トリプル（3ベッド）',2],b4:['FO','フォース（4ベッド）',0],b5:['FI','ファイブ（5ベッド）',2],bk:['KI','キング',2]};
+function applyMaster(){ // 予約状況表の割り当てを反映（1回だけ）
+  if(S.master1)return;
+  for(const [id,[code,name]] of Object.entries(G_DEF)){let g=S.grades.find(x=>x.id===id);if(!g){g={id,name};S.grades.splice(Object.keys(G_DEF).indexOf(id),0,g);}g.code=code;g.name=name;}
+  for(const [id,[code,name,pull]] of Object.entries(T_DEF)){let t=S.types.find(x=>x.id===id);if(!t){t={id,name,pull};S.types.splice(Object.keys(T_DEF).indexOf(id),0,t);}t.code=code;t.name=name;if(t.pull==null)t.pull=pull;}
+  S.floorRooms=S.floorRooms||{};
+  for(const [f,line] of Object.entries(MASTER)){
+    const codes=line.split(' '),fr={},cnt={};
+    codes.forEach((c,i)=>{fr[i+1]=T_CODE[c.slice(2)];const g=G_CODE[c.slice(0,2)];cnt[g]=(cnt[g]||0)+1;});
+    S.floorRooms[f]=fr;
+    const main=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0][0];S.floorGrade[f]=main;
+    codes.forEach((c,i)=>{const no=roomNo(+f,i+1),g=G_CODE[c.slice(0,2)];if(g===main)delete S.gradeOv[no];else S.gradeOv[no]=g;});
+  }
+  S.master1=1;
+}
+const gCode=gid=>(S.grades.find(g=>g.id===gid)||{}).code||'';
+const tCode=tid=>(S.types.find(t=>t.id===tid)||{}).code||'';
 function add23(){ // 23Fを追加（既存データ向け）
   if(S.has23)return;
   if(!S.grades.some(g=>g.id==='g23'))S.grades.push({...DEF_G23});
@@ -428,7 +460,7 @@ async function render(){
   const all=itemsOf(cur),list=all.filter(visible),el=$('#list');
   let head='';
   if(room){const t=S.types.find(x=>x.id===roomType())||{};const ov=S.gradeOv[roomNo(room.f,room.n)];
-    head=`<div class="rinfo"><div class="rn">${roomNo(room.f,room.n)}</div><div class="rd"><span class="chip">${room.f}F</span><span class="chip g${gIdx(cur)%4}">${esc(gName(cur))}${ov?'（この部屋だけ）':''}</span><span class="chip">${esc(t.name||'')}</span>${t.pull?`<span class="chip pull">収納ベッド${t.pull}台</span>`:'<span class="chip">収納ベッドなし</span>'}<span class="chip">${list.length}項目</span></div></div>`;}
+    head=`<div class="rinfo"><div class="rn">${roomNo(room.f,room.n)} <span style="font-size:15px;color:#556">${esc(gCode(cur)+tCode(roomType()))}</span></div><div class="rd"><span class="chip">${room.f}F</span><span class="chip g${gIdx(cur)%4}">${esc(gName(cur))}</span><span class="chip">${esc(t.name||'')}</span>${t.pull?`<span class="chip pull">収納ベッド${t.pull}台</span>`:'<span class="chip">収納ベッドなし</span>'}<span class="chip">${list.length}項目</span></div></div>`;}
   if(!all.length){el.innerHTML=head+`<div class="empty">「${esc(gName(cur))}」にはまだ項目がありません。<br>ここに入れた項目は、${esc(gName(cur))}の全部屋に反映されます。<br><br><button class="btn pri" data-tpl="1">メゾネットの見本を入れる</button></div>`;return;}
   let html=head,prev=null;
   list.forEach((it,i)=>{
@@ -463,15 +495,18 @@ $('#addBtn').onclick=()=>openEdit(null);
 /* ---------- 部屋選択 ---------- */
 let pickF=null,gEdit=false;
 function renderPicker(){
-  $('#floorBtns').innerHTML=FLOORS.map(f=>`<button class="${f===pickF?'on':''}" data-f="${f}">${f}F<small>${esc(gName(S.floorGrade[f]))}</small></button>`).join('');
+  $('#floorBtns').innerHTML=FLOORS.map(f=>`<button class="${f===pickF?'on':''}" data-f="${f}">${f}F<small>${esc(gCode(S.floorGrade[f])||gName(S.floorGrade[f]))}</small></button>`).join('');
   $('#gEditBar').style.display=gEdit?'':'none';$('#gEditBtn').textContent=gEdit?'✔ グレード変更を終える':'✏ 部屋ごとのグレードを変える';
   if(pickF==null){$('#roomLbl').style.display='none';$('#roomBtns').innerHTML='';$('#legend').innerHTML='';return;}
   $('#roomLbl').style.display='';$('#roomLbl').textContent=`${pickF}F の部屋（標準：${gName(S.floorGrade[pickF])}）`;
   let h='';
   for(let n=1;n<=ROOMS_PER_FLOOR;n++){const tid=typeAt(pickF,n),g=gradeOf(pickF,n),ov=!!S.gradeOv[roomNo(pickF,n)];
-    h+=`<button data-n="${n}" class="${room&&room.f===pickF&&room.n===n?'on':''}" style="border-left-color:${typeColor(tid)}${ov?';background:#FFF6DB':''}">${roomNo(pickF,n)}<small>${esc(tName(tid))}</small>${(ov||gEdit)?`<small>${ov?'★':''}${esc(gName(g))}</small>`:''}</button>`;}
+    const code=gCode(g)+tCode(tid),GB=['#FFFFFF','#E3EEFB','#FBF0D3','#F6E3EC'];
+    h+=`<button data-n="${n}" class="${room&&room.f===pickF&&room.n===n?'on':''}" style="border-left-color:${typeColor(tid)};background:${GB[gIdx(g)%GB.length]}">${roomNo(pickF,n)}<small>${code.length===4?esc(code):esc(tName(tid))}</small>${gEdit?`<small>${ov?'★':''}${esc(gName(g))}</small>`:''}</button>`;}
   $('#roomBtns').innerHTML=h;
-  $('#legend').innerHTML=typesForGrade(S.floorGrade[pickF]).map(t=>`<span style="--c:${typeColor(t.id)}">${esc(t.name)}</span>`).join('')+'<span style="--c:#FFF6DB">★ フロア標準と違うグレード</span>';
+  const fl=new Set();for(let n=1;n<=ROOMS_PER_FLOOR;n++)fl.add(typeAt(pickF,n));
+  const fg=new Set();for(let n=1;n<=ROOMS_PER_FLOOR;n++)fg.add(gradeOf(pickF,n));
+  $('#legend').innerHTML=S.types.filter(t=>fl.has(t.id)).map(t=>`<span style="--c:${typeColor(t.id)}">${esc(t.name)}</span>`).join('')+S.grades.filter(g=>fg.has(g.id)).map(g=>`<span style="--c:${['#FFFFFF','#E3EEFB','#FBF0D3','#F6E3EC'][gIdx(g.id)%4]};">${esc(g.name)}</span>`).join('');
 }
 $('#roomBtn').onclick=()=>{pickF=room?room.f:null;gEdit=false;renderPicker();$('#roomOv').classList.add('show');};
 $('#roomClr').onclick=()=>{room=null;persist();render();};
@@ -953,7 +988,7 @@ $('#mergeIn').onchange=async e=>{
   try{db=await openDB();}catch(err){mem={kv:new Map(),photos:new Map()};$('#warn').style.display='block';}
   try{
     S=await dbGet('kv','data')||clone(DEFAULT);
-    const k=()=>JSON.stringify([S.v,S.has23,S.numFmt,S.a23]);const before=k();migrate();if(before!==k())await save();
+    const k=()=>JSON.stringify([S.v,S.has23,S.numFmt,S.a23,S.master1]);const before=k();migrate();if(before!==k())await save();
     if(!SNAP)SNAP=snap();
     let sc=null,sr=null;try{sc=localStorage.getItem('westin-cur');sr=localStorage.getItem('westin-room');}catch(_){}
     cur=S.grades.some(g=>g.id===sc)?sc:S.grades[0].id;
