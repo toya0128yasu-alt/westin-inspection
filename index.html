@@ -39,7 +39,9 @@ main{max-width:760px;margin:0 auto;padding:12px 12px 110px}
 .chip{background:#E8EEF6;color:var(--navy);border-radius:99px;padding:2px 8px}
 .chip.set{background:#FFF3D1;color:#8A5A00;font-weight:700}
 .note{font-size:13px;color:var(--sub);margin-top:4px;white-space:pre-wrap}
-.thumbs{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.thumbs{display:flex;gap:6px;margin-top:6px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.thumbs::-webkit-scrollbar{display:none}
+.thumbs img{flex:none;scroll-snap-align:start}
 .thumbs img{width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
 .ops{flex:none;display:flex;flex-direction:column;gap:4px}
 .ops button{border:1px solid var(--line);background:#fff;border-radius:8px;width:38px;height:32px;font-size:14px}
@@ -116,9 +118,20 @@ textarea.in{min-height:70px;resize:vertical}
 .fgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
 .fgrid label{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700}
 .fgrid select{flex:1;border:1px solid var(--line);border-radius:6px;padding:7px 4px;font-size:14px;background:#fff}
-#viewer{position:fixed;inset:0;background:#000;z-index:80;display:none;align-items:center;justify-content:center}
-#viewer.show{display:flex}
-#viewer img{max-width:100%;max-height:100%}
+#viewer{position:fixed;inset:0;background:#000;z-index:80;display:none}
+#viewer.show{display:block}
+#vTrack{position:absolute;inset:0;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+#vTrack::-webkit-scrollbar{display:none}
+#vTrack .sl{flex:none;width:100%;height:100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center}
+#vTrack img{max-width:100%;max-height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none}
+#vClose{position:absolute;top:calc(env(safe-area-inset-top) + 10px);right:12px;z-index:2;background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:99px;width:44px;height:44px;font-size:20px}
+#vCount{position:absolute;top:calc(env(safe-area-inset-top) + 20px);left:0;right:0;text-align:center;color:#fff;font-size:14px;z-index:1;pointer-events:none;text-shadow:0 1px 3px #000}
+#vDots{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 18px);left:0;right:0;display:flex;justify-content:center;gap:7px;z-index:1;pointer-events:none}
+#vDots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.35)}
+#vDots i.on{background:#fff}
+.vNav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:99px;width:44px;height:44px;font-size:22px;display:none}
+@media(hover:hover){.vNav{display:block}}
+#vPrev{left:10px}#vNext{right:10px}
 #toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 16px;border-radius:8px;font-size:14px;opacity:0;transition:.3s;z-index:90;pointer-events:none}
 #toast.show{opacity:1}
 #print{display:none}
@@ -137,6 +150,7 @@ textarea.in{min-height:70px;resize:vertical}
 .pi .nt{font-size:12px;color:#555;white-space:pre-wrap;margin-top:2px}
 .pi .im{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .pi .im img{width:170px;height:128px;object-fit:cover;border:1px solid #ccc;border-radius:4px}
+.pt .sw{display:none}
 .pa{font-size:13px;font-weight:700;color:#2B4A45;margin:10px 0 4px}
 </style>
 </head>
@@ -212,7 +226,7 @@ textarea.in{min-height:70px;resize:vertical}
   <button data-act="restore">📂 バックアップから読み込む（今のデータと置き換え）</button>
   <button data-act="help">❓ 使い方</button>
   <p class="hint" id="usage"></p>
-  <p class="hint">アプリのバージョン：2026-11-06d</p>
+  <p class="hint">アプリのバージョン：2026-11-06e</p>
   <div class="foot"><span class="grow"></span><button class="btn" data-act="close">閉じる</button></div>
   <input type="file" id="restoreIn" hidden>
   <input type="file" id="mergeIn" hidden>
@@ -278,7 +292,7 @@ textarea.in{min-height:70px;resize:vertical}
   <div class="foot"><span class="grow"></span><button class="btn pri" id="helpClose">閉じる</button></div>
 </div></div>
 
-<div id="viewer"><img id="viewerImg" alt=""></div>
+<div id="viewer"><div id="vTrack"></div><div id="vCount"></div><div id="vDots"></div><button id="vClose" aria-label="閉じる">✕</button><button class="vNav" id="vPrev" aria-label="前の写真">‹</button><button class="vNav" id="vNext" aria-label="次の写真">›</button></div>
 <div class="ov" id="dlvOv"><div class="sheet">
   <h2>ファイルができました</h2>
   <p class="hint" id="dlvName" style="word-break:break-all"></p>
@@ -488,14 +502,36 @@ async function render(){
 $('#tabs').onclick=e=>{const b=e.target.closest('.tab');if(!b)return;cur=b.dataset.id;room=null;persist();render();window.scrollTo(0,0);};
 $('#list').onclick=async e=>{
   const img=e.target.closest('img[data-ph]');
-  if(img){e.stopPropagation();$('#viewerImg').src=await photoURL(img.dataset.ph);$('#viewer').classList.add('show');return;}
+  if(img){e.stopPropagation();const ids=[...img.parentElement.querySelectorAll('img[data-ph]')].map(x=>x.dataset.ph);openViewer(ids,ids.indexOf(img.dataset.ph));return;}
   const up=e.target.closest('[data-up]'),dn=e.target.closest('[data-down]');
   if(up||dn){const list=itemsOf(cur).filter(visible),i=list.findIndex(x=>x.id===(up?up.dataset.up:dn.dataset.down)),j=up?i-1:i+1;
     if(j<0||j>=list.length)return;[list[i].order,list[j].order]=[list[j].order,list[i].order];await save();render();return;}
   if(e.target.closest('[data-tpl]')){await loadTemplate(cur);return;}
   const ed=e.target.closest('[data-edit]');if(ed)openEdit(ed.dataset.edit);
 };
-$('#viewer').onclick=()=>$('#viewer').classList.remove('show');
+/* 写真ビューア：横スワイプで次の写真 */
+let vN=0;
+const vTrack=$('#vTrack');
+const vIndex=()=>Math.round(vTrack.scrollLeft/Math.max(1,vTrack.clientWidth));
+function vUpdate(){const i=Math.min(vN-1,Math.max(0,vIndex()));$('#vCount').textContent=vN>1?`${i+1} / ${vN}`:'';
+  $('#vDots').innerHTML=vN>1?Array.from({length:vN},(_,k)=>`<i class="${k===i?'on':''}"></i>`).join(''):'';
+  $('#vPrev').style.visibility=i>0?'':'hidden';$('#vNext').style.visibility=i<vN-1?'':'hidden';}
+async function openViewer(ids,start){
+  vN=ids.length;
+  vTrack.innerHTML=ids.map(()=>`<div class="sl"><img alt=""></div>`).join('');
+  $('#viewer').classList.add('show');
+  const imgs=vTrack.querySelectorAll('img');
+  imgs[start].src=await photoURL(ids[start]);
+  vTrack.scrollLeft=start*vTrack.clientWidth;vUpdate();
+  for(let i=0;i<ids.length;i++)if(i!==start)imgs[i].src=await photoURL(ids[i]);
+}
+const vGo=d=>vTrack.scrollTo({left:(vIndex()+d)*vTrack.clientWidth,behavior:'smooth'});
+let vT;vTrack.addEventListener('scroll',()=>{clearTimeout(vT);vT=setTimeout(vUpdate,60);});
+$('#vPrev').onclick=()=>vGo(-1);$('#vNext').onclick=()=>vGo(1);
+const vClose=()=>{$('#viewer').classList.remove('show');vTrack.innerHTML='';};
+$('#vClose').onclick=vClose;
+document.addEventListener('keydown',e=>{if(!$('#viewer').classList.contains('show'))return;if(e.key==='Escape')vClose();if(e.key==='ArrowRight')vGo(1);if(e.key==='ArrowLeft')vGo(-1);});
+window.addEventListener('resize',()=>{if($('#viewer').classList.contains('show')){const i=vIndex();requestAnimationFrame(()=>vTrack.scrollLeft=i*vTrack.clientWidth);}});
 $('#addBtn').onclick=()=>openEdit(null);
 
 /* ---------- 部屋選択 ---------- */
@@ -692,7 +728,7 @@ async function docBody(gids,src){
       if(it.area!==prev){h+=`<div class="pa">■ ${esc(it.area||'エリア未設定')}</div>`;prev=it.area;}
       const st=setsText(it,null),tg=it.types&&it.types.length?`<div class="m" style="color:#7A5A00">※${it.types.map(tName).map(esc).join('・')}の部屋のみ</div>`:'';
       const imgs=[];for(const p of it.photos){const u=await src(p);if(u)imgs.push(`<img src="${u}" alt="">`);}
-      h+=`<div class="pi"><div class="n">${i+1}</div><div><div class="t">${esc(it.text)}</div>${tg}${st?`<div class="m">セット数：<b>${st}</b></div>`:''}${it.note?`<div class="nt">${esc(it.note)}</div>`:''}${imgs.length?`<div class="im">${imgs.join('')}</div>`:''}</div></div>`;
+      h+=`<div class="pi"><div class="n">${i+1}</div><div><div class="t">${esc(it.text)}</div>${tg}${st?`<div class="m">セット数：<b>${st}</b></div>`:''}${it.note?`<div class="nt">${esc(it.note)}</div>`:''}${imgs.length?`<div class="im">${imgs.join('')}</div>${imgs.length>1?`<div class="sw">写真${imgs.length}枚 ← 横にスワイプ →</div>`:''}`:''}</div></div>`;
     }
     h+='</section>';
   }
@@ -715,7 +751,12 @@ h1{font-size:20px;margin:0 0 4px;color:${C}}.d{font-size:12px;color:#777;margin-
 .pi{display:flex;gap:10px;border:1px solid #ccc;border-radius:8px;padding:10px;margin-bottom:8px;break-inside:avoid;page-break-inside:avoid}
 .n{flex:none;width:32px;height:32px;border-radius:50%;background:${C};color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .t{font-weight:700;font-size:15px;line-height:1.45}.m{font-size:13px;margin-top:3px}.nt{font-size:13px;color:#555;white-space:pre-wrap;margin-top:3px}
-.im{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.im img{width:100%;max-width:320px;border-radius:6px;border:1px solid #ddd}
+.im{display:flex;gap:8px;margin-top:6px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+.im img{flex:none;width:88%;max-width:420px;scroll-snap-align:start;border-radius:6px;border:1px solid #ddd}
+.im img:only-child{width:100%}
+.pi>div:last-child{flex:1;min-width:0}
+.sw{font-size:11px;color:#888;margin-top:2px}
+@media print{.im{flex-wrap:wrap;overflow:visible}.im img{width:45%;max-width:none}.sw{display:none}}
 .wrap{overflow-x:auto}.idx{border-collapse:collapse;font-size:11px;margin-bottom:6px}.idx th,.idx td{border:1px solid #ccc;padding:2px;text-align:center;white-space:nowrap}.idx th{background:#eee}
 .idx a{text-decoration:none;color:#222;display:block;border-radius:3px;padding:2px 3px;border-left:4px solid}
 @media print{.nav{display:none}.typ{page-break-after:always}.typ:last-child{page-break-after:auto}}`;
