@@ -107,6 +107,16 @@ textarea.in{min-height:70px;resize:vertical}
 .mapgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .mapgrid label{display:flex;align-items:center;gap:4px;font-size:13px;font-weight:700}
 .mapgrid select{flex:1;min-width:0;border:1px solid var(--line);border-radius:6px;padding:6px 2px;font-size:13px;background:#fff}
+.sumg{border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+.sumg h3{margin:0;padding:10px 12px;font-size:15px;display:flex;justify-content:space-between;align-items:center}
+.sumr{border-top:1px solid var(--line)}
+.sumr>button{width:100%;display:flex;align-items:center;gap:8px;border:0;background:#fff;padding:11px 12px;font-size:14px;text-align:left}
+.sumr .cd{font-weight:800;min-width:46px;font-family:ui-monospace,Menlo,monospace}
+.sumr .nm{flex:1}
+.sumr .ct{font-size:12px;color:var(--sub);white-space:nowrap}
+.sumr .rl{display:none;flex-wrap:wrap;gap:6px;padding:0 12px 12px}
+.sumr.open .rl{display:flex}
+.sumr .rl button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font-size:14px;font-weight:700}
 .hint{font-size:12px;color:var(--sub);line-height:1.6}
 .chip.g3{background:#F1DDE6;color:#7A2E4F}.chip.g0{background:#E3ECEA;color:#2B4A45}.chip.g1{background:#DDE7F5;color:#1F4E78}.chip.g2{background:#F3E7C6;color:#7A5A00}.chip.tg{background:#EEE;color:#444}
 .floors button small{display:block;font-size:10px;font-weight:400;opacity:.8}
@@ -158,6 +168,7 @@ textarea.in{min-height:70px;resize:vertical}
 <header>
   <div class="hrow">
     <h1 id="title">ウェスティン 客室インスペクション</h1>
+    <button class="iconbtn" id="sumBtn" aria-label="グレード・タイプ一覧">📊 一覧</button>
     <button class="iconbtn" id="menuBtn" aria-label="メニュー">☰ メニュー</button>
   </div>
   <div class="roombar"><button class="roombtn" id="roomBtn">🚪 部屋番号から選ぶ</button><button class="roomclr" id="roomClr" style="display:none" aria-label="部屋の選択を解除">✕</button></div>
@@ -226,7 +237,7 @@ textarea.in{min-height:70px;resize:vertical}
   <button data-act="restore">📂 バックアップから読み込む（今のデータと置き換え）</button>
   <button data-act="help">❓ 使い方</button>
   <p class="hint" id="usage"></p>
-  <p class="hint">アプリのバージョン：2026-11-06e</p>
+  <p class="hint">アプリのバージョン：2026-11-06f</p>
   <div class="foot"><span class="grow"></span><button class="btn" data-act="close">閉じる</button></div>
   <input type="file" id="restoreIn" hidden>
   <input type="file" id="mergeIn" hidden>
@@ -266,6 +277,14 @@ textarea.in{min-height:70px;resize:vertical}
   <div id="areaRows"></div>
   <button class="btn" id="addArea">＋ エリアを追加</button>
   <div class="foot"><span class="grow"></span><button class="btn" id="setCancel">キャンセル</button><button class="btn pri" id="setSave">保存</button></div>
+</div></div>
+
+<!-- グレード×タイプ一覧 -->
+<div class="ov" id="sumOv"><div class="sheet">
+  <h2>グレード×タイプ一覧</h2>
+  <p class="hint" id="sumHead"></p>
+  <div id="sumBody"></div>
+  <div class="foot"><span class="grow"></span><button class="btn" id="sumClose">閉じる</button></div>
 </div></div>
 
 <!-- コピー -->
@@ -657,6 +676,43 @@ $('#delBtn').onclick=async()=>{
   for(const p of new Set([...it.photos,...E.added]))await delPhoto(p);
   S.items=S.items.filter(x=>x!==it);renumber(cur);
   await save();$('#editOv').classList.remove('show');E=null;render();toast('削除しました');
+};
+
+/* ---------- グレード×タイプ一覧 ---------- */
+function comboList(){ // [{g,t,rooms:[{f,n,no}]}]
+  const map=new Map();
+  for(const f of FLOORS)for(let n=1;n<=ROOMS_PER_FLOOR;n++){
+    const g=gradeOf(f,n),t=typeAt(f,n);if(!g||!t)continue;
+    const k=g+'|'+t;if(!map.has(k))map.set(k,{g,t,rooms:[]});map.get(k).rooms.push({f,n,no:roomNo(f,n)});
+  }
+  const gi=g=>S.grades.findIndex(x=>x.id===g),CO=['TW','TH','FO','FI','KI'],ti=t=>{const c=tCode(t),i=CO.indexOf(c);return i>=0?i:10+S.types.findIndex(x=>x.id===t);};
+  return [...map.values()].sort((a,b)=>(gi(a.g)-gi(b.g))||(ti(a.t)-ti(b.t)));
+}
+function renderSummary(){
+  const list=comboList(),GB=['#F4F6F5','#E3EEFB','#FBF0D3','#F6E3EC'];
+  const total=list.reduce((a,x)=>a+x.rooms.length,0);
+  $('#sumHead').textContent=`全${list.length}通り・${total}室。行を押すと部屋番号が出て、部屋番号を押すとその部屋のチェックリストが開きます。「項目」はその組み合わせで表示される確認項目の数です。`;
+  let h='';
+  for(const g of S.grades){
+    const rows=list.filter(x=>x.g===g.id);if(!rows.length)continue;
+    const rc=rows.reduce((a,x)=>a+x.rooms.length,0);
+    h+=`<div class="sumg"><h3 style="background:${GB[gIdx(g.id)%GB.length]}"><span>${esc(g.name)}</span><span style="font-size:12px;font-weight:400">${rows.length}通り・${rc}室</span></h3>`;
+    for(const x of rows){
+      const t=S.types.find(y=>y.id===x.t)||{},code=(g.code||'')+(t.code||'');
+      const ni=S.items.filter(it=>it.gradeId===g.id&&(!it.types||!it.types.length||it.types.includes(x.t))).length;
+      h+=`<div class="sumr"><button type="button" data-tog="1" style="border-left:5px solid ${typeColor(x.t)}"><span class="cd">${esc(code.length===4?code:'')}</span><span class="nm">${esc(t.name||'')}</span><span class="ct">${x.rooms.length}室・項目${ni}</span><span>▾</span></button>
+        <div class="rl">${x.rooms.map(r=>`<button type="button" data-rf="${r.f}" data-rn="${r.n}">${r.no}</button>`).join('')}</div></div>`;
+    }
+    h+='</div>';
+  }
+  $('#sumBody').innerHTML=h||'<p class="hint">部屋の割り当てがありません。</p>';
+}
+$('#sumBtn').onclick=()=>{renderSummary();$('#sumOv').classList.add('show');};
+$('#sumClose').onclick=()=>$('#sumOv').classList.remove('show');
+$('#sumOv').onclick=e=>{
+  if(e.target===e.currentTarget){e.currentTarget.classList.remove('show');return;}
+  const tg=e.target.closest('[data-tog]');if(tg){tg.parentElement.classList.toggle('open');return;}
+  const rb=e.target.closest('[data-rf]');if(rb){const f=+rb.dataset.rf,n=+rb.dataset.rn;room={f,n};cur=gradeOf(f,n);persist();$('#sumOv').classList.remove('show');render();window.scrollTo(0,0);}
 };
 
 /* ---------- メニュー ---------- */
