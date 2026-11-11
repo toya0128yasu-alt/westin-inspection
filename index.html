@@ -355,7 +355,7 @@ const DEF_FG={3:'gs',5:'gs',7:'gs',9:'gs',11:'ge',13:'ge',15:'ge',17:'gl',19:'gl
 const DEF_G23={id:'g23',name:'23F'};
 const DEF_T23=[{id:'p2',name:'23F 2ベッド（2層）',pull:0},{id:'p4a',name:'23F 4ベッド（3層）',pull:0},{id:'p4ak',name:'23F 4ベッド（3層・上階キング）',pull:0},{id:'p4b',name:'23F 4ベッド（2層）',pull:0},{id:'p5',name:'23F 5ベッド（3層）',pull:0},{id:'p7',name:'23F 7ベッド（3層）',pull:0},{id:'p7k',name:'23F 7ベッド（3層・下階キング）',pull:0},{id:'pk',name:'23F キング（3層）',pull:0},{id:'p4j',name:'23F 4ベッド（3層・上階ベッド連結）',pull:0}];
 const DEF_R23={1:'p2',2:'p4a',3:'p7',4:'p4j',5:'p5',6:'p4a',7:'p4b',8:'p4b',9:'p4a',10:'p7k',11:'pk',12:'p5',13:'p4ak',14:'p4b',15:'p4b',16:'p4a',17:'p7',18:'p4j',19:'p5',20:'p4a',21:'p2'};
-const DEF_A23=['中階：入口','中階：ベッドルーム','中階：クローゼット','階段（中階⇄上階）','上階：寝室','上階：別室','上階：洗面','上階：バス・シャワー','上階：トイレ','階段（中階⇄下階）','下階：リビング','下階：収納ベッド','下階：寝室','下階：洗面','下階：バスルーム','下階：トイレ','最終確認'];
+const DEF_A23=['階段（中階⇄下階）','下階：キッチン','下階：洗面','下階：バスルーム','下階：リビング','下階：収納ベッド','下階：寝室','下階：トイレ','階段（中階⇄上階）','上階：寝室','上階：洗面','上階：バス・シャワー','上階：トイレ','上階：別室','中階：ベッドルーム','中階：クローゼット','中階：入口','最終確認']; // 23Fの回り順：下段→上段→中段→入口
 // 通常階の見本 → 23F用に読み替え（通常の上階＝23Fの中階、3層目＝23Fの上階）
 function area23(a){if(a.startsWith('3層目：階段'))return '階段（中階⇄上階）';if(a.startsWith('3層目：'))return '上階：'+a.slice(4);if(a.startsWith('上階：'))return '中階：'+a.slice(3);if(a==='階段')return '階段（中階⇄下階）';return a;}
 const text23=t=>t.replace(/3層目/g,'上階');
@@ -395,7 +395,7 @@ function setsText(it,tid){ // tid指定時はその部屋タイプの数
   return (it.sets===''||it.sets==null)?'':`${esc(it.sets)}${u}`;
 }
 function migrate(){
-  if(S.v===3){fixNumFmt();add23();fixAreas23();applyMaster();addP7K();addP4AK();addLowerBed();addLowerBed23();addUp23();addP4J();return;}
+  if(S.v===3){fixNumFmt();add23();fixAreas23();applyMaster();addP7K();addP4AK();addLowerBed();addLowerBed23();addUp23();addP4J();addOrd23();return;}
   const typesOk=Array.isArray(S.types)&&S.types.some(t=>t.pull!=null);
   const oldItems=(S.items||[]).filter(it=>typesOk&&S.types.some(t=>t.id===it.typeId));
   if(!typesOk)S.types=clone(DEF_TYPES);
@@ -403,7 +403,7 @@ function migrate(){
   S.grades=clone(DEF_GRADES);S.floorGrade=clone(DEF_FG);S.gradeOv={};
   S.areas=S.areas&&S.areas.length?S.areas:clone(DEF_AREAS);
   S.items=oldItems.map(it=>{const n={...it,gradeId:it.scope==='lux'?'gl':'gs',types:[it.typeId],setsBy:null};delete n.typeId;delete n.scope;return n;});
-  delete S.luxFrom;S.v=3;S.numFmt=3;add23();fixAreas23();applyMaster();addP7K();addP4AK();addLowerBed();addLowerBed23();addUp23();addP4J();
+  delete S.luxFrom;S.v=3;S.numFmt=3;add23();fixAreas23();applyMaster();addP7K();addP4AK();addLowerBed();addLowerBed23();addUp23();addP4J();addOrd23();
   for(const g of S.grades)renumber(g.id);
 }
 
@@ -502,6 +502,38 @@ function addP4J(){ // 2304・2318：上階はキングではなくベッド2台�
       S.items.push(it);list.splice(at,0,it);list.forEach((x,i)=>x.order=i+1);}
   }
   S.p4j=1;
+}
+function addOrd23(){ // 23Fの回り順を「下段→上段→中段→入口」に。キッチン・空気清浄機を追加（1回だけ）
+  if(S.ord23)return;
+  S.gradeAreas=S.gradeAreas||{};
+  const old=S.gradeAreas.g23||[],extra=old.filter(a=>!DEF_A23.includes(a)); // 自分で足したエリアは最終確認の前へ
+  const AL=DEF_A23.filter(a=>a!=='最終確認').concat(extra,'最終確認');S.gradeAreas.g23=AL;
+  const list=itemsOf('g23');
+  if(list.length){
+    const P3=['p4a','p4ak','p5','p7','p7k','pk','p4j'],AIR='電源・運転モード、本体・吹き出し口のほこりなし、定位置';
+    const mk=(id,area,text,unit,note,types)=>({id,gradeId:'g23',area,text,types,sets:'',setsBy:null,unit,note,photos:[]});
+    const add=[
+      mk('o23-sink','下階：キッチン','シンク・水栓','','水垢・水滴・拭き跡なし',[]),
+      mk('o23-counter','下階：キッチン','キッチンカウンター','','拭き跡・指紋なし、備品は規定の配置',[]),
+      mk('o23-fridge','下階：キッチン','冷蔵庫','','中は空・忘れ物なし、電源入り',[]),
+      mk('o23-kettle','下階：キッチン','ケトル・コーヒーマシンなどの家電','','中が空・水垢なし、コードをまとめる',[]),
+      mk('o23-air-lv','下階：リビング','空気清浄機','台',AIR,[]),
+      mk('o23-air-lb','下階：寝室','下階寝室 空気清浄機','台',AIR,['p7','p7k']),
+      mk('o23-air-ub','上階：寝室','上階寝室 空気清浄機','台',AIR,[...P3]),
+      mk('o23-air-mb','中階：ベッドルーム','寝室 空気清浄機','台',AIR,[]),
+    ].filter(it=>!S.items.some(x=>x.id===it.id));
+    // 並び：グラス類はキッチンへ。空気清浄機は各エリアのカーテン・窓の後ろ、リビングはマッサージチェアの前
+    const glass=list.find(x=>x.area==='下階：リビング'&&x.text==='グラス・カップ類');if(glass)glass.area='下階：キッチン';
+    const rank=it=>{const i=AL.indexOf(it.area);return i<0?AL.length-1:i;};
+    const sub=new Map(list.map((x,i)=>[x,i]));
+    for(const it of add){
+      let ref=-1;list.forEach((x,i)=>{if(x.area===it.area&&!/マッサージ/.test(x.text))ref=i;});
+      sub.set(it,ref>=0?ref+0.5:(it.area==='下階：キッチン'?-1:1e6));S.items.push(it);list.push(it);
+    }
+    if(glass)sub.set(glass,1e5);
+    list.sort((a,b)=>(rank(a)-rank(b))||(sub.get(a)-sub.get(b))).forEach((x,i)=>x.order=i+1);
+  }
+  S.ord23=1;
 }
 function addLowerBed(){ // ファイブ（FI）は下階にも寝室がある：エリアと確認項目を追加（1回だけ）
   if(S.lowerBed)return;
@@ -1084,6 +1116,7 @@ const TEMPLATE=[
  ['上階：ベッドルーム','ベッド下・ベッドサイド','','ゴミ・忘れ物なし'],
  ['上階：ベッドルーム','ナイトテーブル・照明・時計','','拭き上げ・時刻合わせ'],
  ['上階：ベッドルーム','カーテン・窓','','規定の開き具合、窓に汚れなし'],
+ ['上階：ベッドルーム','寝室 空気清浄機','台','電源・運転モード、本体・吹き出し口のほこりなし、定位置',null,'g23'],
  ['上階：クローゼット','ハンガー','本','規定本数・向きを揃える'],
  ['上階：クローゼット','ナイトウェア','枚','定員分・サイズ確認'],
  ['上階：クローゼット','セーフティボックス','','扉は開いた状態・中に忘れ物なし'],
@@ -1095,9 +1128,11 @@ const TEMPLATE=[
  ['下階：寝室','下階寝室 ベッド下・ベッドサイド','','ゴミ・忘れ物なし',['p7','p7k'],'g23'],
  ['下階：寝室','下階寝室 ナイトテーブル・照明','','拭き上げ・点灯確認',['p7','p7k'],'g23'],
  ['下階：寝室','下階寝室 窓・カーテン','','規定の開き具合、窓に汚れなし',['p7','p7k'],'g23'],
+ ['下階：寝室','下階寝室 空気清浄機','台','電源・運転モード、本体・吹き出し口のほこりなし、定位置',['p7','p7k'],'g23'],
  ['3層目：寝室','3層目 ベッドメイク','台','シワ・たるみなし、規定の仕上げ（キングはキングベッド、連結の部屋は2台）',['p4a','p4ak','p5','p7','p7k','pk','p4j'],'g23'],
  ['3層目：寝室','3層目 ベッド下・窓・カーテン','','ゴミ・忘れ物なし、規定の開き具合',['p4a','p4ak','p5','p7','p7k','pk','p4j'],'g23'],
  ['3層目：寝室','3層目 ベッド連結部','','2台のすき間・高さ・ずれなし、シーツの重なりを整える',['p4j'],'g23'],
+ ['3層目：寝室','3層目寝室 空気清浄機','台','電源・運転モード、本体・吹き出し口のほこりなし、定位置',['p4a','p4ak','p5','p7','p7k','pk','p4j'],'g23'],
  ['3層目：寝室','3層目寝室 クローゼット（ハンガー・ナイトウェア）','','規定数・向きを揃える、忘れ物なし',['p7','p7k'],'g23'],
  ['3層目：寝室','3層目寝室 ライティングデスク','','拭き上げ・照明点灯・忘れ物なし',['p7','p7k'],'g23'],
  ['3層目：別室','別室（寝室とは別の部屋）','','床・家具の拭き上げ、忘れ物なし',['p7','p7k'],'g23'],
@@ -1113,6 +1148,11 @@ const TEMPLATE=[
  ['下階：リビング','テレビ・リモコン','','電源OFF・リモコン定位置'],
  ['下階：リビング','空調・暖房','','設定温度・リモコン定位置'],
  ['下階：リビング','ゴミ箱','','空・袋セット済み'],
+ ['下階：リビング','空気清浄機','台','電源・運転モード、本体・吹き出し口のほこりなし、定位置',null,'g23'],
+ ['下階：キッチン','シンク・水栓','','水垢・水滴・拭き跡なし',null,'g23'],
+ ['下階：キッチン','キッチンカウンター','','拭き跡・指紋なし、備品は規定の配置',null,'g23'],
+ ['下階：キッチン','冷蔵庫','','中は空・忘れ物なし、電源入り',null,'g23'],
+ ['下階：キッチン','ケトル・コーヒーマシンなどの家電','','中が空・水垢なし、コードをまとめる',null,'g23'],
  ['下階：リビング','マッサージチェア','台','座面・肘掛けの拭き上げ、動作確認、隙間に忘れ物なし',null,'g23'],
  ['下階：収納ベッド','プルダウンベッド（収納時）','台','ロック確実・扉に汚れなし','PULL'],
  ['下階：収納ベッド','プルダウンベッド（使用時）','台','予約人数で展開するか確認。シーツ・枕のセット','PULL'],
@@ -1138,7 +1178,7 @@ const TEMPLATE=[
 function addTemplateTo(gid){
   let base=itemsOf(gid).length,n=0;
   const gt=typesForGrade(gid),pullTypes=gt.filter(t=>t.pull>0),is23=gid==='g23',AL=areasOf(gid);
-  let rows=TEMPLATE.map(r=>is23?[area23(r[0]),text23(r[1]),...r.slice(2)]:r);
+  let rows=TEMPLATE.map(r=>is23?[r[1]==='グラス・カップ類'?'下階：キッチン':area23(r[0]),text23(r[1]),...r.slice(2)]:r);
   if(is23)rows=rows.map((r,i)=>[r,i]).sort((a,b)=>((AL.indexOf(a[0][0])+999)%999-(AL.indexOf(b[0][0])+999)%999)||a[1]-b[1]).map(x=>x[0]);
   for(const [area,text,unit,note,tsp,gsp] of rows){
     if(gsp&&gsp!==gid)continue;
@@ -1221,7 +1261,7 @@ $('#mergeIn').onchange=async e=>{
   try{db=await openDB();}catch(err){mem={kv:new Map(),photos:new Map()};$('#warn').style.display='block';}
   try{
     S=await dbGet('kv','data')||clone(DEFAULT);
-    const k=()=>JSON.stringify([S.v,S.has23,S.numFmt,S.a23,S.master1,S.gradeOv,S.p7k,S.p4ak,S.lowerBed,S.lowerBed23,S.up23,S.p4j]);const before=k();migrate();if(before!==k())await save();
+    const k=()=>JSON.stringify([S.v,S.has23,S.numFmt,S.a23,S.master1,S.gradeOv,S.p7k,S.p4ak,S.lowerBed,S.lowerBed23,S.up23,S.p4j,S.ord23]);const before=k();migrate();if(before!==k())await save();
     if(!SNAP)SNAP=snap();
     let sc=null,sr=null;try{sc=localStorage.getItem('westin-cur');sr=localStorage.getItem('westin-room');}catch(_){}
     cur=S.grades.some(g=>g.id===sc)?sc:S.grades[0].id;
