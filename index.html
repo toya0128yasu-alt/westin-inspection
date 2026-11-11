@@ -1042,7 +1042,11 @@ h1{font-size:20px;margin:0 0 4px;color:${C}}.d{font-size:12px;color:#777;margin-
 .wrap{overflow-x:auto}.idx{border-collapse:collapse;font-size:11px;margin-bottom:6px}.idx th,.idx td{border:1px solid #ccc;padding:2px;text-align:center;white-space:nowrap}.idx th{background:#eee}
 .idx a{text-decoration:none;color:#222;display:block;border-radius:3px;padding:2px 3px;border-left:4px solid}
 @media print{.nav{display:none}.typ{page-break-after:always}.typ:last-child{page-break-after:auto}}`;
-  const body=await docBody(gids,p=>photoURL(p),true);
+  // 写真は軽くして（長辺640px）、同じ写真は1回だけ入れる → ファイルを小さく
+  const PH=[],seenPh=new Map();
+  const small=async p=>{const full=await photoURL(p);if(!full)return '';if(!seenPh.has(full)){seenPh.set(full,PH.length);PH.push(await shrinkData(full,640,0.6));}return 'data:," data-p="'+seenPh.get(full);};
+  const body=await docBody(gids,small,true);
+  const phJs=`<script>var P=${JSON.stringify(PH)};document.querySelectorAll('img[data-p]').forEach(function(i){i.src=P[+i.getAttribute('data-p')]});<\/script>`;
   const nav=gids.length>1?`<div class="nav">${gids.map(id=>`<a href="#${id}">${ML(l=>tr(gName(id),l),true)}</a>`).join('')}</div>`:'';
   const langBar=`<div class="lang">${LANGS.map(([l,n])=>`<button data-l="${l}" onclick="document.body.className='${l}';document.documentElement.lang='${l}';try{localStorage.setItem('vlang','${l}')}catch(e){}">${n}</button>`).join('')}</div>`;
   const pick=`<script>try{var v=localStorage.getItem('vlang');if(v)document.body.className=v,document.documentElement.lang=v}catch(e){}<\/script>`;
@@ -1055,7 +1059,7 @@ h1{font-size:20px;margin:0 0 4px;color:${C}}.d{font-size:12px;color:#777;margin-
   idx+=`</table></div><div style="font-size:11px;margin-bottom:16px;line-height:1.8">${S.grades.map((g,i)=>`<span style="display:inline-block;margin-right:8px;background:${GB[i%GB.length]};padding:0 6px">${ML(l=>tr(g.name,l),true)}</span>`).join('')}<br>${S.types.map(t=>`<span style="display:inline-block;margin-right:8px;border-left:4px solid ${typeColor(t.id)};padding-left:4px">${ML(l=>tr(t.name,l),true)}（${roomsOfType(t.id)||'—'}）</span>`).join('')}</div>`;
   const d=new Date();
   const names=gids.map(gName);
-  const html=`<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ウェスティン 客室チェック項目 ${esc(names.join('・'))}</title><style>${css}</style></head><body class="${LANG}">${pick}${langBar}<h1>${ML(l=>uw('ウェスティン 客室チェック項目',l),true)}</h1><div class="d">${ML(l=>uw('作成日',l),true)}：${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}</div>${idx}${nav}${body}</body></html>`;
+  const html=`<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ウェスティン 客室チェック項目 ${esc(names.join('・'))}</title><style>${css}</style></head><body class="${LANG}">${pick}${langBar}<h1>${ML(l=>uw('ウェスティン 客室チェック項目',l),true)}</h1><div class="d">${ML(l=>uw('作成日',l),true)}：${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}</div>${idx}${nav}${body}${phJs}</body></html>`;
   await deliver(new Blob([html],{type:'text/html'}),`ウェスティン_客室チェック項目_${gids.length>1?'全グレード':names[0]}_${today()}.html`);
 }
 
