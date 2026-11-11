@@ -361,7 +361,7 @@ function area23(a){if(a.startsWith('3層目：階段'))return '階段（中階�
 const text23=t=>t.replace(/3層目/g,'上階');
 const DEF_TYPES=[{id:'b2',name:'2ベッド',pull:2},{id:'b3',name:'3ベッド',pull:2},{id:'b4',name:'4ベッド',pull:0},{id:'bk',name:'キング',pull:2},{id:'b5',name:'5ベッド',pull:2}];
 const DEF_ROOMS={1:'b2',2:'b2',3:'b5',4:'bk',5:'b3',6:'b2',7:'b4',8:'b4',9:'b2',10:'b5',11:'bk',12:'b3',13:'b2',14:'b4',15:'b4',16:'b2',17:'b5',18:'bk',19:'b3',20:'b2',21:'b2'};
-const DEF_AREAS=['上階：入口','上階：ベッドルーム','上階：クローゼット','階段','下階：リビング','下階：収納ベッド','下階：寝室','下階：洗面','下階：バスルーム','下階：トイレ','最終確認'];
+const DEF_AREAS=['上階：ベッドルーム','上階：クローゼット','階段','下階：リビング','下階：収納ベッド','下階：寝室','下階：洗面','下階：バスルーム','下階：トイレ','上階：入口','最終確認']; // 入口ドアは最後
 const TYPE_COLORS=['#5B8DB8','#D9822B','#7A9E3E','#B5446E','#7B61B0','#3E9E96','#A0785A','#C9A227','#4F6D8F','#D2691E','#6B8E23','#9C4F96','#2F8F6F'];
 const DEFAULT={v:3,numFmt:3,has23:1,grades:[...DEF_GRADES,DEF_G23],floorGrade:{...DEF_FG,23:'g23'},gradeOv:{},types:[...DEF_TYPES,...DEF_T23],rooms:DEF_ROOMS,floorRooms:{23:DEF_R23},areas:DEF_AREAS,gradeAreas:{g23:DEF_A23},a23:1,items:[]};
 
@@ -395,7 +395,7 @@ function setsText(it,tid){ // tid指定時はその部屋タイプの数
   return (it.sets===''||it.sets==null)?'':`${esc(it.sets)}${u}`;
 }
 function migrate(){
-  if(S.v===3){fixNumFmt();add23();fixAreas23();applyMaster();addP7K();addP4AK();addLowerBed();addLowerBed23();addUp23();addP4J();addOrd23();return;}
+  if(S.v===3){fixNumFmt();add23();fixAreas23();applyMaster();addP7K();addP4AK();addLowerBed();addLowerBed23();addUp23();addP4J();addOrd23();doorLast();return;}
   const typesOk=Array.isArray(S.types)&&S.types.some(t=>t.pull!=null);
   const oldItems=(S.items||[]).filter(it=>typesOk&&S.types.some(t=>t.id===it.typeId));
   if(!typesOk)S.types=clone(DEF_TYPES);
@@ -403,7 +403,7 @@ function migrate(){
   S.grades=clone(DEF_GRADES);S.floorGrade=clone(DEF_FG);S.gradeOv={};
   S.areas=S.areas&&S.areas.length?S.areas:clone(DEF_AREAS);
   S.items=oldItems.map(it=>{const n={...it,gradeId:it.scope==='lux'?'gl':'gs',types:[it.typeId],setsBy:null};delete n.typeId;delete n.scope;return n;});
-  delete S.luxFrom;S.v=3;S.numFmt=3;add23();fixAreas23();applyMaster();addP7K();addP4AK();addLowerBed();addLowerBed23();addUp23();addP4J();addOrd23();
+  delete S.luxFrom;S.v=3;S.numFmt=3;add23();fixAreas23();applyMaster();addP7K();addP4AK();addLowerBed();addLowerBed23();addUp23();addP4J();addOrd23();doorLast();
   for(const g of S.grades)renumber(g.id);
 }
 
@@ -534,6 +534,17 @@ function addOrd23(){ // 23Fの回り順を「下段→上段→中段→入口�
     list.sort((a,b)=>(rank(a)-rank(b))||(sub.get(a)-sub.get(b))).forEach((x,i)=>x.order=i+1);
   }
   S.ord23=1;
+}
+function doorLast(){ // 通常階：入口ドアのチェックを最後（最終確認の前）に回す（1回だけ）
+  if(S.doorLast)return;
+  const D='上階：入口',A=S.areas;
+  if(A.includes(D)){A.splice(A.indexOf(D),1);const f=A.indexOf('最終確認');A.splice(f>=0?f:A.length,0,D);}
+  for(const g of S.grades){
+    if(areasOf(g.id)!==S.areas)continue; // 23Fなど専用エリアのグレードは対象外
+    const list=itemsOf(g.id),rank=it=>{const i=A.indexOf(it.area);return i<0?A.length:i;};
+    list.sort((a,b)=>(rank(a)-rank(b))||(a.order-b.order)).forEach((x,i)=>x.order=i+1);
+  }
+  S.doorLast=1;
 }
 function addLowerBed(){ // ファイブ（FI）は下階にも寝室がある：エリアと確認項目を追加（1回だけ）
   if(S.lowerBed)return;
@@ -1179,7 +1190,7 @@ function addTemplateTo(gid){
   let base=itemsOf(gid).length,n=0;
   const gt=typesForGrade(gid),pullTypes=gt.filter(t=>t.pull>0),is23=gid==='g23',AL=areasOf(gid);
   let rows=TEMPLATE.map(r=>is23?[r[1]==='グラス・カップ類'?'下階：キッチン':area23(r[0]),text23(r[1]),...r.slice(2)]:r);
-  if(is23)rows=rows.map((r,i)=>[r,i]).sort((a,b)=>((AL.indexOf(a[0][0])+999)%999-(AL.indexOf(b[0][0])+999)%999)||a[1]-b[1]).map(x=>x[0]);
+  rows=rows.map((r,i)=>[r,i]).sort((a,b)=>((AL.indexOf(a[0][0])+999)%999-(AL.indexOf(b[0][0])+999)%999)||a[1]-b[1]).map(x=>x[0]);
   for(const [area,text,unit,note,tsp,gsp] of rows){
     if(gsp&&gsp!==gid)continue;
     let types=[],sets='',setsBy=null;
@@ -1261,7 +1272,7 @@ $('#mergeIn').onchange=async e=>{
   try{db=await openDB();}catch(err){mem={kv:new Map(),photos:new Map()};$('#warn').style.display='block';}
   try{
     S=await dbGet('kv','data')||clone(DEFAULT);
-    const k=()=>JSON.stringify([S.v,S.has23,S.numFmt,S.a23,S.master1,S.gradeOv,S.p7k,S.p4ak,S.lowerBed,S.lowerBed23,S.up23,S.p4j,S.ord23]);const before=k();migrate();if(before!==k())await save();
+    const k=()=>JSON.stringify([S.v,S.has23,S.numFmt,S.a23,S.master1,S.gradeOv,S.p7k,S.p4ak,S.lowerBed,S.lowerBed23,S.up23,S.p4j,S.ord23,S.doorLast]);const before=k();migrate();if(before!==k())await save();
     if(!SNAP)SNAP=snap();
     let sc=null,sr=null;try{sc=localStorage.getItem('westin-cur');sr=localStorage.getItem('westin-room');}catch(_){}
     cur=S.grades.some(g=>g.id===sc)?sc:S.grades[0].id;
