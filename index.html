@@ -1023,9 +1023,11 @@ async function exportViewer(gids){
   const C='#2B4A45';
   const css=`body{font-family:-apple-system,"Hiragino Sans","Meiryo UI",${FONTS},sans-serif;margin:0;padding:16px;color:#222;background:#fff}
 .lang{display:flex;gap:6px;margin:0 0 12px}.lang button{border:1px solid ${C};background:#fff;color:${C};border-radius:99px;padding:6px 14px;font-size:14px}
-body.ja .lang [data-l=ja],body.km .lang [data-l=km],body.ne .lang [data-l=ne]{background:${C};color:#fff;font-weight:700}
-body.ja [class^=L-]:not(.L-ja),body.km [class^=L-]:not(.L-km),body.ne [class^=L-]:not(.L-ne){display:none}
-.js{font-size:12px;color:#888;white-space:pre-wrap;margin-top:1px}body.ja .js{display:none}
+.lgr{position:absolute;opacity:0;pointer-events:none}.lang label{border:1px solid ${C};background:#fff;color:${C};border-radius:99px;padding:6px 14px;font-size:14px;cursor:pointer}
+#lg-ja:checked~.lang [for=lg-ja],#lg-km:checked~.lang [for=lg-km],#lg-ne:checked~.lang [for=lg-ne]{background:${C};color:#fff;font-weight:700}
+#lg-ja:checked~.doc [class^=L-]:not(.L-ja),#lg-km:checked~.doc [class^=L-]:not(.L-km),#lg-ne:checked~.doc [class^=L-]:not(.L-ne){display:none}
+.js{font-size:12px;color:#888;white-space:pre-wrap;margin-top:1px}#lg-ja:checked~.doc .js{display:none}
+img.ph{background-color:#f2f2f2;background-position:center;background-size:contain;background-repeat:no-repeat;height:auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 h1{font-size:20px;margin:0 0 4px;color:${C}}.d{font-size:12px;color:#777;margin-bottom:12px}
 .nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}.nav a{background:${C};color:#fff;text-decoration:none;padding:6px 12px;border-radius:99px;font-size:13px}
 .typ{margin-bottom:28px}.typ h2{font-size:18px;border-bottom:3px solid ${C};padding-bottom:4px;color:${C}}
@@ -1044,12 +1046,14 @@ h1{font-size:20px;margin:0 0 4px;color:${C}}.d{font-size:12px;color:#777;margin-
 @media print{.nav{display:none}.typ{page-break-after:always}.typ:last-child{page-break-after:auto}}`;
   // 写真は軽くして（長辺640px）、同じ写真は1回だけ入れる → ファイルを小さく
   const PH=[],seenPh=new Map();
-  const small=async p=>{const full=await photoURL(p);if(!full)return '';if(!seenPh.has(full)){seenPh.set(full,PH.length);PH.push(await shrinkData(full,640,0.6));}return 'data:," data-p="'+seenPh.get(full);};
+  const small=async p=>{const full=await photoURL(p);if(!full)return '';
+    if(!seenPh.has(full)){seenPh.set(full,PH.length);let d=full,r=4/3;try{const im=await loadImg(full);r=im.naturalWidth/im.naturalHeight||r;d=shrink(im,640,0.6);}catch(_){}PH.push({d,r});}
+    return 'data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="ph q'+seenPh.get(full);};
   const body=await docBody(gids,small,true);
-  const phJs=`<script>var P=${JSON.stringify(PH)};document.querySelectorAll('img[data-p]').forEach(function(i){i.src=P[+i.getAttribute('data-p')]});<\/script>`;
+  const phCss=PH.map((x,i)=>`.q${i}{background-image:url(${x.d});aspect-ratio:${x.r.toFixed(3)}}`).join('\n');
   const nav=gids.length>1?`<div class="nav">${gids.map(id=>`<a href="#${id}">${ML(l=>tr(gName(id),l),true)}</a>`).join('')}</div>`:'';
-  const langBar=`<div class="lang">${LANGS.map(([l,n])=>`<button data-l="${l}" onclick="document.body.className='${l}';document.documentElement.lang='${l}';try{localStorage.setItem('vlang','${l}')}catch(e){}">${n}</button>`).join('')}</div>`;
-  const pick=`<script>try{var v=localStorage.getItem('vlang');if(v)document.body.className=v,document.documentElement.lang=v}catch(e){}<\/script>`;
+  const radios=LANGS.map(([l])=>`<input type="radio" name="lg" class="lgr" id="lg-${l}"${l===LANG?' checked':''}>`).join('');
+  const langBar=`${radios}<div class="lang">${LANGS.map(([l,n])=>`<label for="lg-${l}">${n}</label>`).join('')}</div><div class="doc">`;
   const GB=['#E3ECEA','#DDE7F5','#F3E7C6','#F1DDE6','#EEE'];
   let idx=`<h2 style="font-size:16px;color:${C};margin:0 0 6px">${ML(l=>uw('部屋番号から探す',l),true)}</h2><p style="font-size:12px;color:#555;margin:0 0 6px"><span class="L-ja">部屋番号を押すと、その部屋のグレードのチェック項目に移動します。背景色＝グレード、左の線の色＝部屋タイプ。「※〇〇の部屋のみ」の項目は、該当する部屋だけ確認してください。</span><span class="L-km">${esc(uw('部屋番号を押すと、その部屋のグレードのチェック項目に移動します。','km'))}</span><span class="L-ne">${esc(uw('部屋番号を押すと、その部屋のグレードのチェック項目に移動します。','ne'))}</span></p><div class="wrap"><table class="idx"><tr><th>${ML(l=>uw('階',l),true)}</th>${Array.from({length:ROOMS_PER_FLOOR},(_,i)=>`<th>${pad(i+1)}</th>`).join('')}</tr>`;
   for(const f of FLOORS){idx+=`<tr><th>${f}F</th>`;
@@ -1059,7 +1063,8 @@ h1{font-size:20px;margin:0 0 4px;color:${C}}.d{font-size:12px;color:#777;margin-
   idx+=`</table></div><div style="font-size:11px;margin-bottom:16px;line-height:1.8">${S.grades.map((g,i)=>`<span style="display:inline-block;margin-right:8px;background:${GB[i%GB.length]};padding:0 6px">${ML(l=>tr(g.name,l),true)}</span>`).join('')}<br>${S.types.map(t=>`<span style="display:inline-block;margin-right:8px;border-left:4px solid ${typeColor(t.id)};padding-left:4px">${ML(l=>tr(t.name,l),true)}（${roomsOfType(t.id)||'—'}）</span>`).join('')}</div>`;
   const d=new Date();
   const names=gids.map(gName);
-  const html=`<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ウェスティン 客室チェック項目 ${esc(names.join('・'))}</title><style>${css}</style></head><body class="${LANG}">${pick}${langBar}<h1>${ML(l=>uw('ウェスティン 客室チェック項目',l),true)}</h1><div class="d">${ML(l=>uw('作成日',l),true)}：${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}</div>${idx}${nav}${body}${phJs}</body></html>`;
+  const html=`<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ウェスティン 客室チェック項目 ${esc(names.join('・'))}</title><style>${css}
+${phCss}</style></head><body>${langBar}<h1>${ML(l=>uw('ウェスティン 客室チェック項目',l),true)}</h1><div class="d">${ML(l=>uw('作成日',l),true)}：${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}</div>${idx}${nav}${body}</div></body></html>`;
   await deliver(new Blob([html],{type:'text/html'}),`ウェスティン_客室チェック項目_${gids.length>1?'全グレード':names[0]}_${today()}.html`);
 }
 

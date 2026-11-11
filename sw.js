@@ -1,7 +1,7 @@
 // オフライン対応＋自動更新
 // ・アプリ本体（ページ）は「ネット優先」：つながれば常に最新版、圏外なら保存済みの版
 // ・アイコン等は「保存優先」
-const C='westin-v17';
+const C='westin-v18';
 const CORE=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(CORE.map(u=>new Request(u,{cache:'reload'})))));self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
