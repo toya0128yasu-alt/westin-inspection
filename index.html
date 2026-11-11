@@ -1200,6 +1200,10 @@ function addTemplateTo(gid){
   let base=itemsOf(gid).length,n=0;
   const gt=typesForGrade(gid),pullTypes=gt.filter(t=>t.pull>0),is23=gid==='g23',AL=areasOf(gid);
   let rows=TEMPLATE.map(r=>is23?[r[1]==='グラス・カップ類'?'下階：キッチン':area23(r[0]),text23(r[1]),...r.slice(2)]:r);
+  { // 見本は決まった回り順で入れる：エリアの並びを標準の順にそろえる（自分で足したエリアは最終確認の前）
+    const D=is23?DEF_A23:DEF_AREAS,ex=AL.filter(x=>!D.includes(x)),k=D.indexOf('最終確認');
+    AL.splice(0,AL.length,...D.slice(0,k),...ex,...D.slice(k));
+  }
   rows=rows.map((r,i)=>[r,i]).sort((a,b)=>((AL.indexOf(a[0][0])+999)%999-(AL.indexOf(b[0][0])+999)%999)||a[1]-b[1]).map(x=>x[0]);
   for(const [area,text,unit,note,tsp,gsp] of rows){
     if(gsp&&gsp!==gid)continue;
