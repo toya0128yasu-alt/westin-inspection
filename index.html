@@ -353,8 +353,8 @@ const pad=n=>String(n).padStart(2,'0');
 const DEF_GRADES=[{id:'gs',name:'スタンダード'},{id:'ge',name:'エグゼクティブ'},{id:'gl',name:'ラグジュアリー'}];
 const DEF_FG={3:'gs',5:'gs',7:'gs',9:'gs',11:'ge',13:'ge',15:'ge',17:'gl',19:'gl',21:'gl'};
 const DEF_G23={id:'g23',name:'23F'};
-const DEF_T23=[{id:'p2',name:'23F 2ベッド（2層）',pull:0},{id:'p4a',name:'23F 4ベッド（3層）',pull:0},{id:'p4ak',name:'23F 4ベッド（3層・上階キング）',pull:0},{id:'p4b',name:'23F 4ベッド（2層）',pull:0},{id:'p5',name:'23F 5ベッド（3層）',pull:0},{id:'p7',name:'23F 7ベッド（3層）',pull:0},{id:'p7k',name:'23F 7ベッド（3層・下階キング）',pull:0},{id:'pk',name:'23F キング（3層）',pull:0}];
-const DEF_R23={1:'p2',2:'p4a',3:'p7',4:'pk',5:'p5',6:'p4a',7:'p4b',8:'p4b',9:'p4a',10:'p7k',11:'pk',12:'p5',13:'p4ak',14:'p4b',15:'p4b',16:'p4a',17:'p7',18:'pk',19:'p5',20:'p4a',21:'p2'};
+const DEF_T23=[{id:'p2',name:'23F 2ベッド（2層）',pull:0},{id:'p4a',name:'23F 4ベッド（3層）',pull:0},{id:'p4ak',name:'23F 4ベッド（3層・上階キング）',pull:0},{id:'p4b',name:'23F 4ベッド（2層）',pull:0},{id:'p5',name:'23F 5ベッド（3層）',pull:0},{id:'p7',name:'23F 7ベッド（3層）',pull:0},{id:'p7k',name:'23F 7ベッド（3層・下階キング）',pull:0},{id:'pk',name:'23F キング（3層）',pull:0},{id:'p4j',name:'23F 4ベッド（3層・上階ベッド連結）',pull:0}];
+const DEF_R23={1:'p2',2:'p4a',3:'p7',4:'p4j',5:'p5',6:'p4a',7:'p4b',8:'p4b',9:'p4a',10:'p7k',11:'pk',12:'p5',13:'p4ak',14:'p4b',15:'p4b',16:'p4a',17:'p7',18:'p4j',19:'p5',20:'p4a',21:'p2'};
 const DEF_A23=['中階：入口','中階：ベッドルーム','中階：クローゼット','階段（中階⇄上階）','上階：寝室','上階：別室','上階：洗面','上階：バス・シャワー','上階：トイレ','階段（中階⇄下階）','下階：リビング','下階：収納ベッド','下階：寝室','下階：洗面','下階：バスルーム','下階：トイレ','最終確認'];
 // 通常階の見本 → 23F用に読み替え（通常の上階＝23Fの中階、3層目＝23Fの上階）
 function area23(a){if(a.startsWith('3層目：階段'))return '階段（中階⇄上階）';if(a.startsWith('3層目：'))return '上階：'+a.slice(4);if(a.startsWith('上階：'))return '中階：'+a.slice(3);if(a==='階段')return '階段（中階⇄下階）';return a;}
@@ -395,7 +395,7 @@ function setsText(it,tid){ // tid指定時はその部屋タイプの数
   return (it.sets===''||it.sets==null)?'':`${esc(it.sets)}${u}`;
 }
 function migrate(){
-  if(S.v===3){fixNumFmt();add23();fixAreas23();applyMaster();addP7K();addP4AK();addLowerBed();addLowerBed23();addUp23();return;}
+  if(S.v===3){fixNumFmt();add23();fixAreas23();applyMaster();addP7K();addP4AK();addLowerBed();addLowerBed23();addUp23();addP4J();return;}
   const typesOk=Array.isArray(S.types)&&S.types.some(t=>t.pull!=null);
   const oldItems=(S.items||[]).filter(it=>typesOk&&S.types.some(t=>t.id===it.typeId));
   if(!typesOk)S.types=clone(DEF_TYPES);
@@ -403,7 +403,7 @@ function migrate(){
   S.grades=clone(DEF_GRADES);S.floorGrade=clone(DEF_FG);S.gradeOv={};
   S.areas=S.areas&&S.areas.length?S.areas:clone(DEF_AREAS);
   S.items=oldItems.map(it=>{const n={...it,gradeId:it.scope==='lux'?'gl':'gs',types:[it.typeId],setsBy:null};delete n.typeId;delete n.scope;return n;});
-  delete S.luxFrom;S.v=3;S.numFmt=3;add23();fixAreas23();applyMaster();addP7K();addP4AK();addLowerBed();addLowerBed23();addUp23();
+  delete S.luxFrom;S.v=3;S.numFmt=3;add23();fixAreas23();applyMaster();addP7K();addP4AK();addLowerBed();addLowerBed23();addUp23();addP4J();
   for(const g of S.grades)renumber(g.id);
 }
 
@@ -488,6 +488,20 @@ function addUp23(){ // 23F：7ベッドの上階寝室にトイレ・クロー�
     list.forEach((x,i)=>x.order=i+1);
   }
   S.up23=1;
+}
+function addP4J(){ // 2304・2318：上階はキングではなくベッド2台を連結 → 別タイプに（1回だけ）
+  if(S.p4j)return;
+  if(!S.types.some(t=>t.id==='p4j')){const i=S.types.findIndex(t=>t.id==='pk');S.types.splice(i>=0?i+1:S.types.length,0,{id:'p4j',name:'23F 4ベッド（3層・上階ベッド連結）',pull:0});}
+  S.floorRooms=S.floorRooms||{};const fr=S.floorRooms[23]=S.floorRooms[23]||{};
+  for(const n of [4,18])if(fr[n]==='pk'||!fr[n])fr[n]='p4j';
+  for(const it of S.items){if(it.types&&it.types.includes('pk')&&!it.types.includes('p4j'))it.types.push('p4j');if(it.setsBy&&it.setsBy.pk!=null&&it.setsBy.p4j==null)it.setsBy.p4j=it.setsBy.pk;}
+  const list=itemsOf('g23'),A='上階：寝室';
+  if(list.length&&!S.items.some(x=>x.id==='u23-join')){
+    let at=-1;list.forEach((x,i)=>{if(x.area===A&&/ベッドメイク/.test(x.text))at=i+1;});
+    if(at>=0){const it={id:'u23-join',gradeId:'g23',area:A,text:'上階 ベッド連結部',types:['p4j'],sets:'',setsBy:null,unit:'',note:'2台のすき間・高さ・ずれなし、シーツの重なりを整える',photos:[]};
+      S.items.push(it);list.splice(at,0,it);list.forEach((x,i)=>x.order=i+1);}
+  }
+  S.p4j=1;
 }
 function addLowerBed(){ // ファイブ（FI）は下階にも寝室がある：エリアと確認項目を追加（1回だけ）
   if(S.lowerBed)return;
@@ -1075,23 +1089,24 @@ const TEMPLATE=[
  ['上階：クローゼット','セーフティボックス','','扉は開いた状態・中に忘れ物なし'],
  ['階段','階段・手すり','','ほこり・指紋なし、ぐらつきなし'],
  ['階段','階段照明','','点灯確認'],
- ['3層目：階段','上階への階段・手すり','','ほこり・指紋なし、ぐらつきなし',['p4a','p4ak','p5','p7','p7k','pk'],'g23'],
+ ['3層目：階段','上階への階段・手すり','','ほこり・指紋なし、ぐらつきなし',['p4a','p4ak','p5','p7','p7k','pk','p4j'],'g23'],
  ['下階：寝室','下階寝室 ベッドメイク','台','シワ・たるみなし、規定の仕上げ',['p7'],'g23'],
  ['下階：寝室','下階 キングベッド ベッドメイク','台','シワ・たるみなし、規定の仕上げ',['p7k'],'g23'],
  ['下階：寝室','下階寝室 ベッド下・ベッドサイド','','ゴミ・忘れ物なし',['p7','p7k'],'g23'],
  ['下階：寝室','下階寝室 ナイトテーブル・照明','','拭き上げ・点灯確認',['p7','p7k'],'g23'],
  ['下階：寝室','下階寝室 窓・カーテン','','規定の開き具合、窓に汚れなし',['p7','p7k'],'g23'],
- ['3層目：寝室','3層目 ベッドメイク','台','シワ・たるみなし、規定の仕上げ（キングはキングベッド）',['p4a','p4ak','p5','p7','p7k','pk'],'g23'],
- ['3層目：寝室','3層目 ベッド下・窓・カーテン','','ゴミ・忘れ物なし、規定の開き具合',['p4a','p4ak','p5','p7','p7k','pk'],'g23'],
+ ['3層目：寝室','3層目 ベッドメイク','台','シワ・たるみなし、規定の仕上げ（キングはキングベッド、連結の部屋は2台）',['p4a','p4ak','p5','p7','p7k','pk','p4j'],'g23'],
+ ['3層目：寝室','3層目 ベッド下・窓・カーテン','','ゴミ・忘れ物なし、規定の開き具合',['p4a','p4ak','p5','p7','p7k','pk','p4j'],'g23'],
+ ['3層目：寝室','3層目 ベッド連結部','','2台のすき間・高さ・ずれなし、シーツの重なりを整える',['p4j'],'g23'],
  ['3層目：寝室','3層目寝室 クローゼット（ハンガー・ナイトウェア）','','規定数・向きを揃える、忘れ物なし',['p7','p7k'],'g23'],
  ['3層目：寝室','3層目寝室 ライティングデスク','','拭き上げ・照明点灯・忘れ物なし',['p7','p7k'],'g23'],
  ['3層目：別室','別室（寝室とは別の部屋）','','床・家具の拭き上げ、忘れ物なし',['p7','p7k'],'g23'],
  ['3層目：別室','別室のトイレ','','便器内・便座裏・床、ペーパー三角折り・予備',['p7','p7k'],'g23'],
- ['3層目：洗面','3層目 洗面ボウル・鏡','','髪の毛・水垢・くもりなし（7ベッドは寝室側）',['p4a','p4ak','p5','p7','p7k','pk'],'g23'],
- ['3層目：洗面','3層目 アメニティ・タオル','セット','規定数・規定の配置',['p4a','p4ak','p5','p7','p7k','pk'],'g23'],
+ ['3層目：洗面','3層目 洗面ボウル・鏡','','髪の毛・水垢・くもりなし（7ベッドは寝室側）',['p4a','p4ak','p5','p7','p7k','pk','p4j'],'g23'],
+ ['3層目：洗面','3層目 アメニティ・タオル','セット','規定数・規定の配置',['p4a','p4ak','p5','p7','p7k','pk','p4j'],'g23'],
  ['3層目：バス・シャワー','3層目 シャワー','','髪の毛・水垢・カビなし、排水口',['p5'],'g23'],
  ['3層目：バス・シャワー','3層目 浴室（寝室側）','','バスタブ・シャワー・排水口',['p7','p7k'],'g23'],
- ['3層目：トイレ','3層目 トイレ','','便器内・便座裏・床、ペーパー三角折り・予備（7ベッドは寝室側）',['p4a','p4ak','p5','p7','p7k','pk'],'g23'],
+ ['3層目：トイレ','3層目 トイレ','','便器内・便座裏・床、ペーパー三角折り・予備（7ベッドは寝室側）',['p4a','p4ak','p5','p7','p7k','pk','p4j'],'g23'],
  ['下階：リビング','ソファ・クッション','','隙間に忘れ物なし、規定の配置'],
  ['下階：リビング','テーブル・カウンター','','拭き跡・指紋なし'],
  ['下階：リビング','グラス・カップ類','個','定員分・汚れなし'],
@@ -1206,7 +1221,7 @@ $('#mergeIn').onchange=async e=>{
   try{db=await openDB();}catch(err){mem={kv:new Map(),photos:new Map()};$('#warn').style.display='block';}
   try{
     S=await dbGet('kv','data')||clone(DEFAULT);
-    const k=()=>JSON.stringify([S.v,S.has23,S.numFmt,S.a23,S.master1,S.gradeOv,S.p7k,S.p4ak,S.lowerBed,S.lowerBed23,S.up23]);const before=k();migrate();if(before!==k())await save();
+    const k=()=>JSON.stringify([S.v,S.has23,S.numFmt,S.a23,S.master1,S.gradeOv,S.p7k,S.p4ak,S.lowerBed,S.lowerBed23,S.up23,S.p4j]);const before=k();migrate();if(before!==k())await save();
     if(!SNAP)SNAP=snap();
     let sc=null,sr=null;try{sc=localStorage.getItem('westin-cur');sr=localStorage.getItem('westin-room');}catch(_){}
     cur=S.grades.some(g=>g.id===sc)?sc:S.grades[0].id;
